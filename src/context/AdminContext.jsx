@@ -1,0 +1,170 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+import { adminService } from '../services/adminService';
+import { authService } from '../services/authService';
+
+const AdminContext = createContext(null);
+
+export function AdminProvider({ children }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(() => authService.isAuthenticated());
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [systemAlert, setSystemAlert] = useState(null);
+
+  // Synchronize authentication status
+  const login = async (email, password) => {
+    setLoading(true);
+    try {
+      const success = await authService.login(email, password);
+      setIsLoggedIn(success);
+      return success;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    setLoading(true);
+    try {
+      await authService.logout();
+      setIsLoggedIn(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load admin data once authenticated
+  const loadAdminData = async () => {
+    if (!isLoggedIn) return;
+    setLoading(true);
+    try {
+      const [o, p, c, m, s] = await Promise.all([
+        adminService.getOrders(),
+        adminService.getProducts(),
+        adminService.getCategories(),
+        adminService.getMessages(),
+        adminService.getSettings(),
+      ]);
+      setOrders(o);
+      setProducts(p);
+      setCategories(c);
+      setMessages(m);
+      setSettings(s);
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAdminData();
+  }, [isLoggedIn]);
+
+  // Operations
+  const updateOrderStatus = async (orderId, status) => {
+    await adminService.updateOrderStatus(orderId, status);
+    setOrders((current) =>
+      current.map((order) => (order.id === orderId ? { ...order, status } : order))
+    );
+  };
+
+  const saveProduct = async (product) => {
+    const saved = await adminService.saveProduct(product);
+    setProducts((current) =>
+      current.some((item) => item.id === saved.id)
+        ? current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...current]
+    );
+  };
+
+  const deleteProduct = async (productId) => {
+    await adminService.deleteProduct(productId);
+    setProducts((current) => current.filter((item) => item.id !== productId));
+  };
+
+  const saveCategory = async (categoryName, oldCategoryName = null) => {
+    const updated = await adminService.saveCategory(categoryName, oldCategoryName);
+    setCategories(updated);
+  };
+
+  const deleteCategory = async (categoryName) => {
+    await adminService.deleteCategory(categoryName);
+    setCategories((current) => current.filter((cat) => cat !== categoryName));
+  };
+
+  const deleteMessage = async (messageId) => {
+    await adminService.deleteMessage(messageId);
+    setMessages((current) => current.filter((msg) => msg.id !== messageId));
+  };
+
+  const markMessageAsRead = async (messageId) => {
+    await adminService.markMessageAsRead(messageId);
+    setMessages((current) =>
+      current.map((msg) => (msg.id === messageId ? { ...msg, read: true } : msg))
+    );
+  };
+
+  const updateSettings = async (nextSettings) => {
+    const updated = await adminService.updateSettings(nextSettings);
+    setSettings(updated);
+  };
+
+  const requestConfirm = ({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm }) => {
+    setSystemAlert({ type: 'danger', title, message, confirmLabel, cancelLabel, onConfirm });
+  };
+
+  const showNotice = (title, message) => {
+    setSystemAlert({ type: 'info', title, message, confirmLabel: 'OK' });
+  };
+
+  const closeSystemAlert = () => setSystemAlert(null);
+  const confirmSystemAlert = () => {
+    systemAlert?.onConfirm?.();
+    setSystemAlert(null);
+  };
+
+  const value = {
+    isLoggedIn,
+    login,
+    logout,
+    orders,
+    setOrders,
+    products,
+    setProducts,
+    categories,
+    setCategories,
+    messages,
+    setMessages,
+    settings,
+    setSettings,
+    loading,
+    systemAlert,
+    setSystemAlert,
+    updateOrderStatus,
+    saveProduct,
+    deleteProduct,
+    saveCategory,
+    deleteCategory,
+    deleteMessage,
+    markMessageAsRead,
+    updateSettings,
+    requestConfirm,
+    showNotice,
+    closeSystemAlert,
+    confirmSystemAlert,
+  };
+
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
+}
+
+export function useAdmin() {
+  const context = useContext(AdminContext);
+  if (!context) {
+    throw new Error('useAdmin must be used within an AdminProvider');
+  }
+  return context;
+}
