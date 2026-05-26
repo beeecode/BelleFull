@@ -19,12 +19,13 @@ import { Logo } from '../common/Logo';
 import { Button } from '../ui/Button';
 import { InstagramMark } from '../ui/InstagramMark';
 import { AnimatedSection } from '../common/AnimatedSection';
+import { getMapsUrl } from '../../utils/contactLinks';
 
 const navigationIcons = {
-  '#menu': Utensils,
-  '#chef': ChefHat,
-  '#reviews': Star,
-  '#contact': Mail,
+  '/menu': Utensils,
+  '/#chef': ChefHat,
+  '/#reviews': Star,
+  '/#contact': Mail,
 };
 
 const favoriteIcons = [Utensils, ChefHat, Flame, ShoppingBag];
@@ -38,16 +39,16 @@ const contactIcons = {
 export function Footer() {
   return (
     <AnimatedSection as="footer" id="contact" className="footer" direction="fade">
-      <img className="footer-left" src={inspirationAssets.footerLeft} alt="" loading="lazy" />
-      <img className="footer-right" src={inspirationAssets.footerRight} alt="" loading="lazy" />
+      <img className="footer-left" src={inspirationAssets.footerLeft} alt="" loading="lazy" decoding="async" />
+      <img className="footer-right" src={inspirationAssets.footerRight} alt="" loading="lazy" decoding="async" />
       <div className="footer-inner">
         <div className="footer-feature">
           <Logo />
           <p>{projectDetails.description}</p>
-          <p className="footer-address">
+          <a className="footer-address" href={getMapsUrl(siteConfig.contact.address)} target="_blank" rel="noreferrer">
             <MapPin size={18} aria-hidden="true" />
             <span>{siteConfig.contact.address}</span>
-          </p>
+          </a>
           <div className="footer-contact-list">
             <strong>Contact</strong>
             {siteConfig.openingHours.map((item) => {
@@ -85,7 +86,7 @@ export function Footer() {
             const Icon = favoriteIcons[index % favoriteIcons.length];
 
             return (
-              <a key={item.id} href="#menu">
+              <a key={item.id} href="/menu">
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.name}</span>
               </a>

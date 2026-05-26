@@ -6,13 +6,14 @@ import { OrderStatus } from './OrderStatus';
 
 const statusFilters = [
   { id: 'all', label: 'All Orders' },
-  { id: 'new', label: 'New' },
-  { id: 'accepted', label: 'Accepted' },
+  { id: 'pending_payment', label: 'Pending Payment' },
+  { id: 'paid', label: 'Paid' },
   { id: 'preparing', label: 'Preparing' },
-  { id: 'ready', label: 'Ready' },
+  { id: 'ready_for_pickup', label: 'Ready for Pickup' },
+  { id: 'out_for_delivery', label: 'Out for Delivery' },
   { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
-  { id: 'scheduled', label: 'Scheduled' },
+  { id: 'failed_payment', label: 'Failed Payment' },
 ];
 
 const pageVariants = {
@@ -34,8 +35,7 @@ function getDeliveryFee(order) {
 function getCounts(orders) {
   return statusFilters.reduce((counts, filter) => {
     if (filter.id === 'all') counts[filter.id] = orders.length;
-    else if (filter.id === 'scheduled') counts[filter.id] = orders.filter((order) => order.orderType === 'Scheduled Order').length;
-    else counts[filter.id] = orders.filter((order) => order.status === filter.id).length;
+    else counts[filter.id] = orders.filter((order) => order.order_status === filter.id).length;
     return counts;
   }, {});
 }
@@ -56,8 +56,8 @@ function AdminSearch({ value, onChange, placeholder = 'Search' }) {
 }
 
 function StatusChip({ filter, count, active, onClick }) {
-  const isRejected = filter.id === 'cancelled';
-  const isComplete = ['accepted', 'ready', 'completed', 'all', 'scheduled'].includes(filter.id);
+  const isRejected = ['cancelled', 'failed_payment'].includes(filter.id);
+  const isComplete = ['paid', 'ready_for_pickup', 'completed', 'all'].includes(filter.id);
   const Icon = isRejected ? X : Check;
 
   return (
@@ -92,12 +92,12 @@ function OrderCard({ order, onOpen }) {
           <h3>Order {order.id}</h3>
           <p>{order.date}</p>
         </div>
-        <img src={order.avatar} alt="" className="admin-order-avatar" loading="lazy" />
+        <img src={order.avatar} alt="" className="admin-order-avatar" loading="lazy" decoding="async" />
       </header>
       <div className="admin-order-items">
         {order.items.slice(0, 2).map((item) => (
           <div className="admin-order-item" key={`${order.id}-${item.name}-${item.price}`}>
-            <img src={item.image} alt="" className="admin-order-image" loading="lazy" />
+            <img src={item.image} alt="" className="admin-order-image" loading="lazy" decoding="async" />
             <div className="admin-order-item-copy">
               <div className="admin-order-item-top">
                 <h4>{item.name}</h4>
@@ -111,11 +111,12 @@ function OrderCard({ order, onOpen }) {
       </div>
       <footer className="admin-order-footer">
         <span>X{order.items.length} Items</span>
-        <OrderStatus status={order.status} />
+        <OrderStatus status={order.order_status} />
       </footer>
       <div className="admin-card-meta">
         <span>{order.customer.name}</span>
         <span>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</span>
+        <span>{order.paymentStatus}</span>
       </div>
       <button
         className="admin-card-view"
@@ -150,11 +151,9 @@ export default function OrdersTab({ orders, onOpenOrder }) {
       .join(' ')
       .toLowerCase()
       .includes(query);
-    const matchesStatus =
-      activeFilter === 'all' ||
-      (activeFilter === 'scheduled' ? order.orderType === 'Scheduled Order' : order.status === activeFilter);
+    const matchesStatus = activeFilter === 'all' || order.order_status === activeFilter;
     const matchesDelivery = deliveryFilter === 'all' || order.deliveryMethod === deliveryFilter;
-    const matchesPayment = paymentFilter === 'all' || order.paymentMethod === paymentFilter;
+    const matchesPayment = paymentFilter === 'all' || order.payment_status === paymentFilter;
     return matchesSearch && matchesStatus && matchesDelivery && matchesPayment;
   });
 
@@ -178,10 +177,10 @@ export default function OrdersTab({ orders, onOpenOrder }) {
             value={paymentFilter}
             onChange={(event) => setPaymentFilter(event.target.value)}
           >
-            <option value="all">All payments</option>
-            <option value="Pay on Delivery">Pay on Delivery</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-            <option value="Online Payment">Online Payment</option>
+            <option value="all">All payment status</option>
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="failed">Failed</option>
           </select>
         </div>
       </motion.div>

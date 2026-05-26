@@ -10,14 +10,19 @@ import { Footer } from '../../../components/layout/Footer';
 import { BackToTop } from '../../../components/ui/BackToTop';
 import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBackgroundIllustrations';
 
-export default function LandingPage({ onNavigateMenu }) {
+export default function LandingPage({ onNavigateHome, onNavigateMenu }) {
   return (
     <>
-      <Header cartHref="/menu" orderHref="/menu" onCartClick={onNavigateMenu} onOrderClick={onNavigateMenu} />
+      <Header
+        orderHref="/menu"
+        onHomeClick={onNavigateHome}
+        onMenuClick={onNavigateMenu}
+        onOrderClick={onNavigateMenu}
+      />
       <main id="landing-page-root">
         <FigmaBackgroundIllustrations />
-        <HeroSection />
-        <MenuSection />
+        <HeroSection onNavigateMenu={onNavigateMenu} />
+        <MenuSection onNavigateMenu={onNavigateMenu} />
         <FeaturedDishesSection />
         <FeedbackSection />
         <ExpertsSection />

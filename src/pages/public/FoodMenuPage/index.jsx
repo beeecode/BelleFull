@@ -1,14 +1,15 @@
 import { useMemo, useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Search, ShoppingBag } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Minus, Plus, Search, ShoppingBag } from 'lucide-react';
 import { Header } from '../../../components/layout/Header';
 import { Footer } from '../../../components/layout/Footer';
 import { BackToTop } from '../../../components/ui/BackToTop';
 import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBackgroundIllustrations';
+import { LogoLoader } from '../../../components/common/LogoLoader';
+import { CartDrawer } from '../../../components/common/CartDrawer';
 import { FoodDetailModal } from '../../../components/modals/FoodDetailModal';
 import { useCart } from '../../../context/CartContext';
 import { foodService } from '../../../services/foodService';
-import { formatPrice } from '../../../utils/formatPrice';
 import { sectionTransition } from '../../../constants/motion';
 
 const gridVariants = {
@@ -28,14 +29,15 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: sectionTransition },
 };
 
-export default function FoodMenuPage({ onNavigateCheckout }) {
-  const { cartItems, cartCount, addToCart } = useCart();
+export default function FoodMenuPage({ onNavigateCheckout, onNavigateHome, onNavigateMenu }) {
+  const { cartItems, cartCount, addToCart, updateCartQuantity } = useCart();
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFood, setSelectedFood] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -73,6 +75,11 @@ export default function FoodMenuPage({ onNavigateCheckout }) {
     });
   }, [activeCategory, searchTerm, menuItems]);
 
+  const cartItemQuantities = useMemo(
+    () => new Map(cartItems.map((item) => [item.id, item.quantity])),
+    [cartItems],
+  );
+
   const openDetails = (food) => {
     setSelectedFood(food);
   };
@@ -81,13 +88,23 @@ export default function FoodMenuPage({ onNavigateCheckout }) {
     setSelectedFood(null);
   };
 
+  const updateFoodQuantity = (food, quantity) => {
+    updateCartQuantity(food.id, quantity);
+  };
+
   return (
     <>
       <Header
         cartCount={cartCount}
-        cartHref="/checkout"
+        cartHref="#cart"
         orderHref="/checkout"
-        onCartClick={onNavigateCheckout}
+        showCart
+        onCartClick={(event) => {
+          event?.preventDefault();
+          setIsCartOpen(true);
+        }}
+        onHomeClick={onNavigateHome}
+        onMenuClick={onNavigateMenu}
         onOrderClick={onNavigateCheckout}
       />
       <main id="landing-page-root" className="food-menu-page">
@@ -128,7 +145,7 @@ export default function FoodMenuPage({ onNavigateCheckout }) {
 
           {isLoading ? (
             <div className="food-empty-state">
-              <p>Loading delicious menu...</p>
+              <LogoLoader text="Loading menu..." />
             </div>
           ) : filteredItems.length > 0 ? (
             <motion.div
@@ -137,26 +154,37 @@ export default function FoodMenuPage({ onNavigateCheckout }) {
               initial="hidden"
               animate="visible"
             >
-              {filteredItems.map((food) => (
-                <motion.article className="dish-card menu-food-card" key={food.id} variants={cardVariants}>
-                  <div className="dish-card-media">
-                    <img src={food.image} alt={food.name} loading="lazy" />
-                    <span>{formatPrice(food.price, food.currency)}</span>
-                  </div>
-                  <small>{food.category}</small>
-                  <h3>{food.name}</h3>
-                  <p>{food.description}</p>
-                  <div className="menu-card-actions">
-                    <button className="menu-card-primary" type="button" onClick={() => addToCart(food)}>
-                      <ShoppingBag size={16} />
-                      Add to Cart
-                    </button>
-                    <button className="menu-card-secondary" type="button" onClick={() => openDetails(food)}>
-                      View Details
-                    </button>
-                  </div>
-                </motion.article>
-              ))}
+              {filteredItems.map((food) => {
+                const quantity = cartItemQuantities.get(food.id) ?? 0;
+
+                return (
+                  <motion.article
+                    className={`dish-card menu-food-card ${quantity > 0 ? 'is-in-cart' : ''}`}
+                    key={food.id}
+                    variants={cardVariants}
+                  >
+                    <div className="dish-card-media">
+                      <img src={food.image} alt={food.name} loading="lazy" decoding="async" />
+                      <span>{formatMenuPrice(food.price, food.currency)}</span>
+                    </div>
+                    {!food.available ? <span className="menu-sold-out-badge">Sold Out</span> : null}
+                    <small>{food.category}</small>
+                    <h3>{food.name}</h3>
+                    <p>{food.description}</p>
+                    <div className="menu-card-actions">
+                      <MenuItemCartAction
+                        food={food}
+                        quantity={quantity}
+                        onAdd={addToCart}
+                        onUpdateQuantity={updateFoodQuantity}
+                      />
+                      <button className="menu-card-secondary" type="button" onClick={() => openDetails(food)}>
+                        View Details
+                      </button>
+                    </div>
+                  </motion.article>
+                );
+              })}
             </motion.div>
           ) : (
             <motion.div
@@ -179,6 +207,68 @@ export default function FoodMenuPage({ onNavigateCheckout }) {
         onClose={closeDetails}
         onAddToCart={addToCart}
       />
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onBrowseMenu={() => setIsCartOpen(false)}
+        onCheckout={(event) => {
+          setIsCartOpen(false);
+          onNavigateCheckout?.(event);
+        }}
+      />
     </>
+  );
+}
+
+function formatMenuPrice(price, currency = 'NGN') {
+  if (price == null) return 'DM';
+
+  if (currency === 'NGN') {
+    return `\u20A6${Number(price).toLocaleString('en-NG')}`;
+  }
+
+  return Number(price).toLocaleString(undefined, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  });
+}
+
+function MenuItemCartAction({ food, quantity, onAdd, onUpdateQuantity }) {
+  if (!food.available) {
+    return (
+      <button className="menu-card-primary is-disabled" type="button" disabled>
+        Sold Out
+      </button>
+    );
+  }
+
+  if (quantity <= 0) {
+    return (
+      <button className="menu-card-primary" type="button" onClick={() => onAdd(food)}>
+        <ShoppingBag size={16} aria-hidden="true" />
+        Add to Cart
+      </button>
+    );
+  }
+
+  return (
+    <div className="menu-cart-stepper" role="group" aria-label={`${food.name} quantity in cart`}>
+      <button
+        type="button"
+        aria-label={`Decrease ${food.name} quantity`}
+        onClick={() => onUpdateQuantity(food, quantity - 1)}
+      >
+        <Minus size={16} aria-hidden="true" />
+      </button>
+      <strong aria-live="polite">{quantity}</strong>
+      <button
+        type="button"
+        aria-label={`Increase ${food.name} quantity`}
+        onClick={() => onUpdateQuantity(food, quantity + 1)}
+      >
+        <Plus size={16} aria-hidden="true" />
+      </button>
+    </div>
   );
 }

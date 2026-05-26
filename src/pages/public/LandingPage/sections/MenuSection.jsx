@@ -1,9 +1,5 @@
-import { Coffee, Flame, Utensils, ChefHat } from 'lucide-react';
-import { inspirationAssets } from '../../../../constants/inspirationAssets';
+import { ChefHat, Coffee, Flame, Utensils } from 'lucide-react';
 import { menuItems } from '../../../../data/menuItems';
-import { projectDetails } from '../../../../data/projectDetails';
-import { formatPrice } from '../../../../utils/formatPrice';
-import { SectionHeading } from '../../../../components/ui/SectionHeading';
 import { AnimatedSection } from '../../../../components/common/AnimatedSection';
 
 const categories = [
@@ -13,41 +9,26 @@ const categories = [
   { label: menuItems[3]?.name ?? 'Smokey Jollof Rice', icon: Coffee },
 ];
 
-export function MenuSection() {
+export function MenuSection({ onNavigateMenu }) {
   return (
-    <AnimatedSection id="menu" className="menu-section" direction="right">
+    <AnimatedSection id="menu" className="menu-section menu-category-section" direction="right">
       <div className="category-row" aria-label="Menu categories">
         {categories.map((item, index) => {
           const Icon = item.icon;
+
           return (
-            <button className={index === 0 ? 'is-active' : ''} key={item.label} type="button">
-              <Icon size={44} strokeWidth={1.9} />
+            <button
+              className={index === 0 ? 'is-active' : ''}
+              key={item.label}
+              type="button"
+              onClick={onNavigateMenu}
+            >
+              <Icon size={44} strokeWidth={1.9} aria-hidden="true" />
               <span>{item.label}</span>
             </button>
           );
         })}
       </div>
-
-      <div className="menu-showcase">
-        <img className="menu-plate" src={inspirationAssets.menuPlate} alt="" loading="lazy" />
-        <div className="menu-list-panel">
-          <p className="menu-kicker">{projectDetails.preservedCopy.menu.headline}</p>
-          <h2>{projectDetails.preservedCopy.menu.body}</h2>
-          <div className="menu-list">
-            {menuItems.map((item) => (
-              <article key={item.id}>
-                <div>
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
-                </div>
-                <strong>{formatPrice(item.price, item.currency)}</strong>
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <SectionHeading title="Menu" className="discover-heading" />
     </AnimatedSection>
   );
 }

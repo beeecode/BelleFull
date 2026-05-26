@@ -66,9 +66,9 @@ export function AdminProvider({ children }) {
 
   // Operations
   const updateOrderStatus = async (orderId, status) => {
-    await adminService.updateOrderStatus(orderId, status);
+    const updated = await adminService.updateOrderStatus(orderId, status);
     setOrders((current) =>
-      current.map((order) => (order.id === orderId ? { ...order, status } : order))
+      current.map((order) => (order.id === orderId ? { ...order, ...updated } : order))
     );
   };
 
@@ -93,7 +93,12 @@ export function AdminProvider({ children }) {
 
   const deleteCategory = async (categoryName) => {
     await adminService.deleteCategory(categoryName);
-    setCategories((current) => current.filter((cat) => cat !== categoryName));
+    setCategories((current) => current.filter((cat) => cat.id !== categoryName));
+  };
+
+  const toggleCategoryVisibility = async (categoryId) => {
+    const updated = await adminService.toggleCategoryVisibility(categoryId);
+    setCategories(updated);
   };
 
   const deleteMessage = async (messageId) => {
@@ -149,6 +154,7 @@ export function AdminProvider({ children }) {
     deleteProduct,
     saveCategory,
     deleteCategory,
+    toggleCategoryVisibility,
     deleteMessage,
     markMessageAsRead,
     updateSettings,

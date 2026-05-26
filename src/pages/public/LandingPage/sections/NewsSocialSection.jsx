@@ -17,7 +17,7 @@ export function NewsSocialSection() {
         rel="noreferrer"
         aria-label="Follow Amazing Taste Delicacies on Instagram"
       >
-        <img src={inspirationAssets.socialGrid} alt="Amazing Taste Delicacies gallery" loading="lazy" />
+        <img src={inspirationAssets.socialGrid} alt="Amazing Taste Delicacies gallery" loading="lazy" decoding="async" />
         <div>
           <span aria-hidden="true">
             <InstagramMark />

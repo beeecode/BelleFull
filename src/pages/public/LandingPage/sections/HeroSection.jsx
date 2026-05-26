@@ -3,10 +3,13 @@ import { projectDetails } from '../../../../data/projectDetails';
 import { Button } from '../../../../components/ui/Button';
 import { InstagramMark } from '../../../../components/ui/InstagramMark';
 import { AnimatedSection } from '../../../../components/common/AnimatedSection';
+import { DEFAULT_ORDER_MESSAGE, getMapsUrl, getWhatsAppUrl } from '../../../../utils/contactLinks';
 import heroStaffImage from '../../../../assets/figma-inspiration/8f05362a16d5c15175d5d6e8349beb730885358e.png';
 
-export function HeroSection() {
+export function HeroSection({ onNavigateMenu }) {
   const instagramUrl = projectDetails.contact.socialLinks[0]?.url ?? '#contact';
+  const whatsAppUrl = getWhatsAppUrl(DEFAULT_ORDER_MESSAGE);
+  const mapsUrl = getMapsUrl(projectDetails.contact.address);
 
   return (
     <AnimatedSection id="home" className="hero" direction="fade">
@@ -16,19 +19,19 @@ export function HeroSection() {
           <h1>{projectDetails.preservedCopy.hero.headline}</h1>
           <p>{projectDetails.preservedCopy.hero.body}</p>
           <div className="hero-actions">
-            <Button as="a" href="#menu">
+            <Button as="a" href="/menu" onClick={onNavigateMenu}>
               View menu
             </Button>
             <a
               className="video-link"
-              href={instagramUrl}
+              href={whatsAppUrl}
               target="_blank"
               rel="noreferrer"
             >
               <span>
                 <ShoppingBag size={19} />
               </span>
-              <strong>Order on Instagram</strong>
+              <strong>Chat on WhatsApp</strong>
             </a>
           </div>
 
@@ -36,10 +39,10 @@ export function HeroSection() {
             <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram">
               <InstagramMark />
             </a>
-            <a href="#contact" aria-label="Order contact">
+            <a href={whatsAppUrl} target="_blank" rel="noreferrer" aria-label="Chat on WhatsApp">
               <Phone size={18} />
             </a>
-            <a href="#contact" aria-label="Osogbo location">
+            <a href={mapsUrl} target="_blank" rel="noreferrer" aria-label="Osogbo location">
               <MapPin size={18} />
             </a>
             <span />
@@ -53,6 +56,8 @@ export function HeroSection() {
               className="hero-staff-image"
               src={heroStaffImage}
               alt="Amazing Taste Delicacies team member"
+              fetchPriority="high"
+              decoding="async"
             />
           </div>
         </div>

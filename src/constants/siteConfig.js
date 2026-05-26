@@ -6,15 +6,15 @@ export const siteConfig = {
   description:
     'Amazing Taste Delicacies, also known as The Pasta Haven, serves satisfying pasta dishes, local fast-food favorites, and quick-service meals in Osogbo.',
   navigation: [
-    { label: 'Menu', href: '#menu' },
-    { label: 'Kitchen', href: '#chef' },
-    { label: 'Reviews', href: '#reviews' },
-    { label: 'Contact', href: '#contact' },
+    { label: 'Menu', href: '/menu' },
+    { label: 'Kitchen', href: '/#chef' },
+    { label: 'Reviews', href: '/#reviews' },
+    { label: 'Contact', href: '/#contact' },
   ],
   contact: {
     email: null,
     phoneNumbers: [],
-    whatsAppNumbers: [],
+    whatsAppNumbers: ['0802 303 7230'],
     address: 'QGCR+373, Osogbo, Osun State, Nigeria',
     branches: [
       {

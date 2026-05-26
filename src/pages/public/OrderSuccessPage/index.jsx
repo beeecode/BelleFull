@@ -8,7 +8,7 @@ import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBa
 import { formatPrice } from '../../../utils/formatPrice';
 import { sectionTransition } from '../../../constants/motion';
 
-export default function OrderSuccessPage({ onNavigateMenu }) {
+export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
@@ -39,7 +39,12 @@ export default function OrderSuccessPage({ onNavigateMenu }) {
 
   return (
     <>
-      <Header cartCount={0} cartHref="/menu" orderHref="/menu" onCartClick={onNavigateMenu} onOrderClick={onNavigateMenu} />
+      <Header
+        orderHref="/menu"
+        onHomeClick={onNavigateHome}
+        onMenuClick={onNavigateMenu}
+        onOrderClick={onNavigateMenu}
+      />
       <main id="landing-page-root" className="checkout-page">
         <FigmaBackgroundIllustrations />
         <section id="success" className="checkout-shell" style={{ display: 'flex', justifyContent: 'center' }}>
@@ -104,6 +109,14 @@ export default function OrderSuccessPage({ onNavigateMenu }) {
                       <strong>{order.paymentMethod}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--figma-soft)', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--figma-muted)' }}>Payment Status</span>
+                      <strong>{order.paymentStatus || order.payment_status || 'Paid'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--figma-soft)', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--figma-muted)' }}>Payment Reference</span>
+                      <strong>{order.paymentReference || 'MOCK-PAYMENT'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--figma-soft)', paddingBottom: '6px' }}>
                       <span style={{ color: 'var(--figma-muted)' }}>Order Timing</span>
                       <strong>{order.orderType}</strong>
                     </div>
@@ -139,7 +152,7 @@ export default function OrderSuccessPage({ onNavigateMenu }) {
                     <div className="summary-items" style={{ maxHeight: '260px' }}>
                       {order.items.map((item) => (
                         <div className="summary-item" key={item.id} style={{ padding: '10px' }}>
-                          <img src={item.image} alt={item.name} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '10px' }} />
+                          <img src={item.image} alt={item.name} loading="lazy" decoding="async" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '10px' }} />
                           <div>
                             <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontFamily: 'var(--font-serif)' }}>{item.name}</h4>
                             <span style={{ color: 'var(--figma-muted)', fontSize: '13px' }}>

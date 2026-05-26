@@ -16,7 +16,7 @@ export function FigmaBackgroundIllustrations() {
   return (
     <div className="figma-bg-layer" aria-hidden="true">
       {illustrationItems.map((item) => (
-        <img className={`figma-bg-illustration ${item.className}`} src={item.src} alt="" key={item.className} loading="lazy" />
+        <img className={`figma-bg-illustration ${item.className}`} src={item.src} alt="" key={item.className} loading="lazy" decoding="async" />
       ))}
     </div>
   );

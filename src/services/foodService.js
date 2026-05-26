@@ -1,4 +1,4 @@
-import { foodCategories, foodMenuItems } from '../data/foodMenuItems';
+import { getMockCategories, getMockProducts } from './mockMenuStore';
 
 /**
  * Service to manage food menu items and categories.
@@ -12,8 +12,7 @@ export const foodService = {
   async getFoodMenuItems() {
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Return a copy to prevent accidental outside mutation
-        resolve([...foodMenuItems]);
+        resolve(getMockProducts({ publicOnly: true }));
       }, 300);
     });
   },
@@ -25,7 +24,7 @@ export const foodService = {
   async getFoodCategories() {
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve([...foodCategories]);
+        resolve(getMockCategories({ publicOnly: true }).map((category) => category.name));
       }, 200);
     });
   },

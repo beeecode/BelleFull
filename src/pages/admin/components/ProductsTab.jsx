@@ -29,9 +29,12 @@ function AdminSearch({ value, onChange, placeholder = 'Search' }) {
 
 export default function ProductsTab({
   products,
-  setProducts,
+  saveProduct: persistProduct,
+  deleteProduct: persistDeleteProduct,
   categories,
-  setCategories,
+  saveCategory: persistCategory,
+  deleteCategory: persistDeleteCategory,
+  toggleCategoryVisibility,
   requestConfirm,
   showNotice,
 }) {
@@ -42,7 +45,9 @@ export default function ProductsTab({
   const [editingProduct, setEditingProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState('');
-  const [editingCategory, setEditingCategory] = useState('');
+  const [editingCategory, setEditingCategory] = useState(null);
+
+  const categoryOptions = categories.map((category) => category.name);
 
   const visibleProducts = products.filter((item) => {
     const matchesSearch = [item.name, item.category, item.description]
@@ -54,12 +59,8 @@ export default function ProductsTab({
     return matchesSearch && matchesCategory && matchesAvailability;
   });
 
-  const saveProduct = (product) => {
-    setProducts((current) =>
-      current.some((item) => item.id === product.id)
-        ? current.map((item) => (item.id === product.id ? product : item))
-        : [product, ...current]
-    );
+  const saveProduct = async (product) => {
+    await persistProduct(product);
     setEditingProduct(null);
     setShowProductModal(false);
   };
@@ -69,32 +70,34 @@ export default function ProductsTab({
       title: 'Delete Food Item?',
       message: 'Are you sure you want to delete this food item? This action cannot be undone.',
       confirmLabel: 'Delete',
-      onConfirm: () => setProducts((current) => current.filter((item) => item.id !== id)),
+      onConfirm: () => persistDeleteProduct(id),
     });
   };
 
-  const saveCategory = () => {
+  const saveCategory = async () => {
     const value = categoryDraft.trim();
     if (!value) return;
-    setCategories((current) =>
-      editingCategory
-        ? current.map((category) => (category === editingCategory ? value : category))
-        : [...current, value]
+    await persistCategory(
+      {
+        name: value,
+        isVisible: editingCategory ? editingCategory.isVisible : true,
+      },
+      editingCategory?.id,
     );
     setCategoryDraft('');
-    setEditingCategory('');
+    setEditingCategory(null);
   };
 
   const deleteCategory = (category) => {
-    if (category === 'All') {
+    if (category.name === 'All') {
       showNotice('Required Category', 'The All category is required and cannot be deleted.');
       return;
     }
     requestConfirm({
       title: 'Delete Category?',
-      message: `Are you sure you want to delete ${category}? This action cannot be undone.`,
+      message: `Are you sure you want to delete ${category.name}? This action cannot be undone.`,
       confirmLabel: 'Delete',
-      onConfirm: () => setCategories((current) => current.filter((item) => item !== category)),
+      onConfirm: () => persistDeleteCategory(category.id),
     });
   };
 
@@ -139,7 +142,7 @@ export default function ProductsTab({
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
             >
-              {categories.map((category) => (
+              {categoryOptions.map((category) => (
                 <option key={category}>{category}</option>
               ))}
             </select>
@@ -156,7 +159,7 @@ export default function ProductsTab({
           <motion.div className="admin-product-grid" variants={pageVariants}>
             {visibleProducts.map((item) => (
               <article className="admin-product-card" key={item.id}>
-                <img src={item.image} alt="" loading="lazy" />
+                <img src={item.image} alt="" loading="lazy" decoding="async" />
                 <div>
                   <h3>{item.name}</h3>
                   <p>{item.category}</p>
@@ -182,13 +185,7 @@ export default function ProductsTab({
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setProducts((current) =>
-                        current.map((product) =>
-                          product.id === item.id ? { ...product, available: !product.available } : product
-                        )
-                      )
-                    }
+                    onClick={() => persistProduct({ ...item, available: !item.available })}
                   >
                     {item.available ? (
                       <XCircle size={15} strokeWidth={1.8} aria-hidden="true" />
@@ -221,18 +218,29 @@ export default function ProductsTab({
           </div>
           <div className="admin-simple-grid">
             {categories.map((category) => (
-              <article className="admin-simple-card" key={category}>
-                <strong>{category}</strong>
+              <article className="admin-simple-card" key={category.id}>
+                <strong>{category.name}</strong>
+                <span className={category.isVisible ? 'is-available' : 'is-unavailable'}>
+                  {category.isVisible ? 'Visible on menu' : 'Hidden from menu'}
+                </span>
                 <div>
                   <button
                     type="button"
                     onClick={() => {
                       setEditingCategory(category);
-                      setCategoryDraft(category);
+                      setCategoryDraft(category.name);
                     }}
                   >
                     <Pencil size={15} strokeWidth={1.8} aria-hidden="true" />
                     Edit
+                  </button>
+                  <button type="button" onClick={() => toggleCategoryVisibility(category.id)}>
+                    {category.isVisible ? (
+                      <XCircle size={15} strokeWidth={1.8} aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                    )}
+                    {category.isVisible ? 'Hide' : 'Show'}
                   </button>
                   <button type="button" onClick={() => deleteCategory(category)}>
                     <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
@@ -247,7 +255,7 @@ export default function ProductsTab({
       {showProductModal && (
         <ProductFormModal
           product={editingProduct}
-          categories={categories}
+          categories={categoryOptions}
           onClose={() => setShowProductModal(false)}
           onSave={saveProduct}
         />

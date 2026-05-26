@@ -1,16 +1,18 @@
 import { Check, Package, Settings2, X } from 'lucide-react';
 
 export const statusMeta = {
-  new: { label: 'NEW', className: 'is-new', icon: Package },
-  accepted: { label: 'ACCEPTED', className: 'is-completed', icon: Check },
+  pending_payment: { label: 'PENDING PAYMENT', className: 'is-new', icon: Package },
+  paid: { label: 'PAID', className: 'is-completed', icon: Check },
   preparing: { label: 'PREPARING', className: 'is-new', icon: Settings2 },
-  ready: { label: 'READY', className: 'is-completed', icon: Check },
+  ready_for_pickup: { label: 'READY FOR PICKUP', className: 'is-completed', icon: Check },
+  out_for_delivery: { label: 'OUT FOR DELIVERY', className: 'is-new', icon: Package },
   completed: { label: 'COMPLETED', className: 'is-completed', icon: Check },
   cancelled: { label: 'CANCELLED', className: 'is-rejected', icon: X },
+  failed_payment: { label: 'FAILED PAYMENT', className: 'is-rejected', icon: X },
 };
 
 export function OrderStatus({ status }) {
-  const meta = statusMeta[status] ?? statusMeta.new;
+  const meta = statusMeta[status] ?? statusMeta.pending_payment;
   const Icon = meta.icon;
   return (
     <span className={`admin-status-pill ${meta.className}`}>

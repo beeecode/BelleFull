@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAdmin } from '../../context/AdminContext';
 import AdminLogin from './components/AdminLogin';
 import AdminShell from './components/AdminShell';
@@ -19,14 +19,17 @@ export default function AdminPage() {
     orders,
     products,
     categories,
-    setCategories,
-    setProducts,
     messages,
     setMessages,
     settings,
-    setSettings,
+    updateSettings,
     systemAlert,
     updateOrderStatus,
+    saveProduct,
+    deleteProduct,
+    saveCategory,
+    deleteCategory,
+    toggleCategoryVisibility,
     requestConfirm,
     showNotice,
     closeSystemAlert,
@@ -38,6 +41,15 @@ export default function AdminPage() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+
+  useEffect(() => {
+    if (!isLoggedIn && window.location.pathname === '/admin') {
+      window.history.replaceState({}, '', '/admin/login');
+    }
+    if (isLoggedIn && window.location.pathname === '/admin/login') {
+      window.history.replaceState({}, '', '/admin');
+    }
+  }, [isLoggedIn]);
 
   const handleStatusChange = async (orderId, status) => {
     try {
@@ -82,9 +94,12 @@ export default function AdminPage() {
     products: (
       <ProductsTab
         products={products}
-        setProducts={setProducts}
+        saveProduct={saveProduct}
+        deleteProduct={deleteProduct}
         categories={categories}
-        setCategories={setCategories}
+        saveCategory={saveCategory}
+        deleteCategory={deleteCategory}
+        toggleCategoryVisibility={toggleCategoryVisibility}
         requestConfirm={requestConfirm}
         showNotice={showNotice}
       />
@@ -95,7 +110,7 @@ export default function AdminPage() {
     settings: (
       <SettingsTab
         settings={settings}
-        setSettings={setSettings}
+        updateSettings={updateSettings}
         onLogout={handleLogout}
         showNotice={showNotice}
       />

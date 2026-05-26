@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { inspirationAssets } from '../../../../constants/inspirationAssets';
 import { projectDetails } from '../../../../data/projectDetails';
 import { testimonials } from '../../../../data/testimonials';
@@ -35,7 +35,11 @@ export function FeedbackSection() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % slides.length);
+      if (document.hidden) return;
+
+      startTransition(() => {
+        setActiveIndex((current) => (current + 1) % slides.length);
+      });
     }, 4000);
 
     return () => window.clearInterval(timer);
@@ -49,7 +53,7 @@ export function FeedbackSection() {
           <div className="feedback-quote-card">
             <blockquote key={activeSlide.quote}>{activeSlide.quote}</blockquote>
             <span className="feedback-avatar">
-              <img src={activeSlide.avatar} alt="" loading="lazy" />
+              <img src={activeSlide.avatar} alt="" loading="lazy" decoding="async" />
             </span>
           </div>
           <div className="feedback-author">
@@ -78,6 +82,7 @@ export function FeedbackSection() {
             src={activeSlide.media}
             alt="Amazing Taste Delicacies customer highlight"
             loading="lazy"
+            decoding="async"
           />
         </div>
       </div>

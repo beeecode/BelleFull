@@ -30,21 +30,16 @@ export const preservedCopy = {
     body:
       'Amazing Taste Delicacies, also known as The Pasta Haven, brings pasta favorites, local fast-food comfort, and quick service to Osogbo.',
   },
-  menu: {
-    headline: 'Amazing Taste Favorites',
-    body:
-      'Delicious pasta dishes and local favorites prepared for fast, satisfying meals.',
-  },
   welcome: {
     headline: 'Welcome to Amazing Taste Delicacies',
     body:
       'A local Osogbo fast-food kitchen serving pasta-forward meals, quick bites, and satisfying delicacies with a homegrown touch.',
   },
   chef: {
-    headline: 'The Pasta Haven',
+    headline: 'Amazing Taste, Everyday Comfort',
     body:
-      'From pasta bowls to local favorites, the Amazing Taste kitchen focuses on flavor, speed, and meals that feel worth coming back for.',
-    highlights: ['Pasta-focused favorites', 'Quick service', 'Local Osogbo kitchen'],
+      'A local Osogbo food brand serving tasty meals, quick service, and dependable everyday options made to satisfy.',
+    highlights: ['Fresh everyday meals', 'Quick service', 'Trusted Osogbo brand'],
     note: 'Locally operated, delivery available, and open to partnerships.',
   },
   reviews: {

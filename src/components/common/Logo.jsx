@@ -1,9 +1,14 @@
 import { siteConfig } from '../../constants/siteConfig';
 import logoImage from '../../assets/figma-inspiration/Amaxing logo.jpg';
 
-export function Logo({ className = '' }) {
+export function Logo({
+  ariaLabel = 'Go to homepage',
+  className = '',
+  href = '/',
+  onClick,
+}) {
   return (
-    <a className={`brand-logo ${className}`} href="#home" aria-label={`${siteConfig.restaurantName} home`}>
+    <a className={`brand-logo ${className}`} href={href} aria-label={ariaLabel} onClick={onClick}>
       <span className="brand-logo-mark">
         <img src={logoImage} alt="" />
       </span>

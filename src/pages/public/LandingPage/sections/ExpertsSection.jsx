@@ -5,16 +5,19 @@ import { AnimatedSection } from '../../../../components/common/AnimatedSection';
 
 const experts = [
   {
-    name: 'Pasta-focused favorites',
-    role: 'Comforting pasta bowls and fast-food plates made for satisfying everyday meals.',
+    name: 'Freshly Made Everyday Meals',
+    role: 'Amazing Taste Delicacies serves satisfying everyday meals prepared with care, flavor, and consistency.',
+    badge: 'Made with care',
   },
   {
-    name: 'Quick-service meals',
-    role: 'Fresh updates, easy ordering, and dependable meals for pickup or delivery.',
+    name: 'Fast, Simple Food Service',
+    role: 'From quick ordering to dependable delivery or pickup, we make getting good food easy and convenient.',
+    badge: 'Quick service',
   },
   {
-    name: 'Local Osogbo kitchen',
-    role: 'A locally operated food brand serving Osogbo with flavor and consistency.',
+    name: 'A Trusted Osogbo Food Brand',
+    role: 'We are a locally loved restaurant in Osogbo known for delicious meals, reliable service, and customer satisfaction.',
+    badge: 'Local favorite',
   },
 ];
 
@@ -26,10 +29,10 @@ export function ExpertsSection() {
       <div className="experts-grid">
         {experts.map((expert, index) => (
           <article className="expert-card" key={expert.name}>
-            <img src={inspirationAssets.chefs[index]} alt="" loading="lazy" />
+            <img src={inspirationAssets.chefs[index]} alt="" loading="lazy" decoding="async" />
             <h3>{expert.name}</h3>
             <p>{expert.role}</p>
-            <span>{index === 0 ? 'Pasta' : index === 1 ? 'Fast' : 'Local'}</span>
+            <span className="expert-card-badge">{expert.badge}</span>
           </article>
         ))}
       </div>

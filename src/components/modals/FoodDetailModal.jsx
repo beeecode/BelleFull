@@ -35,9 +35,10 @@ export function FoodDetailModal({ isOpen, food, onClose, onAddToCart }) {
             <button className="food-detail-close" type="button" aria-label="Close details" onClick={onClose}>
               <X size={20} />
             </button>
-            <img src={food.image} alt={food.name} loading="lazy" />
+            <img src={food.image} alt={food.name} loading="lazy" decoding="async" />
             <div>
               <span>{food.category}</span>
+              {!food.available ? <span className="food-detail-sold-out">Sold Out</span> : null}
               <h2>{food.name}</h2>
               <p>{food.description}</p>
               <strong>{formatPrice(food.price, food.currency)}</strong>
@@ -51,15 +52,17 @@ export function FoodDetailModal({ isOpen, food, onClose, onAddToCart }) {
                 </button>
               </div>
               <button
-                className="food-detail-add"
+                className={`food-detail-add ${!food.available ? 'is-disabled' : ''}`}
                 type="button"
+                disabled={!food.available}
                 onClick={() => {
+                  if (!food.available) return;
                   onAddToCart(food, quantity);
                   onClose();
                 }}
               >
                 <ShoppingBag size={18} />
-                Add to Cart
+                {food.available ? 'Add to Cart' : 'Sold Out'}
               </button>
             </div>
           </motion.article>

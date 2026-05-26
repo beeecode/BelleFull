@@ -5,28 +5,46 @@ import { Header } from '../../../components/layout/Header';
 import { Footer } from '../../../components/layout/Footer';
 import { BackToTop } from '../../../components/ui/BackToTop';
 import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBackgroundIllustrations';
+import { LogoLoader } from '../../../components/common/LogoLoader';
 import { useCart } from '../../../context/CartContext';
 import { orderService } from '../../../services/orderService';
+import { getMockSettings } from '../../../services/mockMenuStore';
 import { formatPrice } from '../../../utils/formatPrice';
 import { sectionTransition } from '../../../constants/motion';
+import { siteConfig } from '../../../constants/siteConfig';
 
 const deliveryMethods = ['Delivery', 'Pickup'];
 const orderTypes = ['Order Now', 'Schedule Order'];
 const mealPeriods = ['Breakfast', 'Lunch', 'Dinner'];
-const paymentMethods = ['Pay on Delivery', 'Bank Transfer', 'Online Payment'];
-const deliveryFee = 1000;
+const paymentMethods = ['Online Payment', 'Pay on Delivery', 'Bank Transfer'];
 
 const fieldInitialState = {
   fullName: '',
   phoneNumber: '',
   emailAddress: '',
+  branch: '',
   deliveryAddress: '',
-  nearestLandmark: '',
+  orderNote: '',
   orderDate: '',
   orderTime: '',
 };
 
 const today = new Date().toISOString().slice(0, 10);
+
+function getCheckoutSettings() {
+  const settings = getMockSettings();
+  const fallbackBranches = siteConfig.contact.branches.map((branch) => branch.name);
+  const branches = String(settings.branches || '')
+    .split('\n')
+    .map((branch) => branch.split(' - ')[0].trim())
+    .filter(Boolean);
+  const deliveryFee = Number(settings.deliveryFee) || 1000;
+
+  return {
+    branches: branches.length > 0 ? branches : fallbackBranches,
+    deliveryFee,
+  };
+}
 
 function getRecommendedTime(mealPeriod) {
   if (mealPeriod === 'Breakfast') return '08:00';
@@ -35,13 +53,25 @@ function getRecommendedTime(mealPeriod) {
   return '';
 }
 
-export default function CheckoutPage({ onNavigateMenu }) {
-  const { cartItems, clearCart, removeFromCart, updateCartQuantity, cartCount } = useCart();
-  const [fields, setFields] = useState(fieldInitialState);
+export default function CheckoutPage({ onNavigateHome, onNavigateMenu }) {
+  const { cartItems, clearCart, removeFromCart, updateCartQuantity } = useCart();
+  const checkoutSettings = useMemo(getCheckoutSettings, []);
+  const [fields, setFields] = useState(() => ({
+    ...fieldInitialState,
+    branch: checkoutSettings.branches[0] ?? '',
+  }));
   const [deliveryMethod, setDeliveryMethod] = useState('Delivery');
   const [orderType, setOrderType] = useState('Order Now');
   const [mealPeriod, setMealPeriod] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Pay on Delivery');
+  const [paymentMethod, setPaymentMethod] = useState('Online Payment');
+  const [pendingOrder, setPendingOrder] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('amazingTastePendingOrder');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,12 +79,17 @@ export default function CheckoutPage({ onNavigateMenu }) {
     () => cartItems.reduce((total, item) => total + item.price * item.quantity, 0),
     [cartItems],
   );
-  const activeDeliveryFee = deliveryMethod === 'Delivery' && cartItems.length > 0 ? deliveryFee : 0;
+  const activeDeliveryFee = deliveryMethod === 'Delivery' && cartItems.length > 0 ? checkoutSettings.deliveryFee : 0;
   const grandTotal = subtotal + activeDeliveryFee;
 
   const updateField = (field, value) => {
     setFields((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: null, form: null }));
+  };
+
+  const selectDeliveryMethod = (method) => {
+    setDeliveryMethod(method);
+    setErrors((current) => ({ ...current, deliveryMethod: null, deliveryAddress: null, form: null }));
   };
 
   const selectMealPeriod = (period) => {
@@ -71,6 +106,8 @@ export default function CheckoutPage({ onNavigateMenu }) {
 
     if (!fields.fullName.trim()) nextErrors.fullName = 'Please enter your full name.';
     if (!fields.phoneNumber.trim()) nextErrors.phoneNumber = 'Please enter your phone number.';
+    if (!fields.emailAddress.trim()) nextErrors.emailAddress = 'Please enter your email address for payment.';
+    if (!fields.branch.trim()) nextErrors.branch = 'Please select a branch.';
     if (!deliveryMethod) nextErrors.deliveryMethod = 'Please select a delivery method.';
     if (!paymentMethod) nextErrors.paymentMethod = 'Please select a payment method.';
     if (deliveryMethod === 'Delivery' && !fields.deliveryAddress.trim()) {
@@ -96,41 +133,57 @@ export default function CheckoutPage({ onNavigateMenu }) {
 
     setIsSubmitting(true);
     try {
+      const deliveryPayload = {
+        delivery_method: deliveryMethod === 'Delivery' ? 'delivery' : 'pickup',
+        delivery_address: deliveryMethod === 'Delivery' ? fields.deliveryAddress.trim() : null,
+      };
       const receipt = await orderService.placeOrder({
         fullName: fields.fullName,
         phoneNumber: fields.phoneNumber,
         emailAddress: fields.emailAddress,
-        deliveryMethod,
-        deliveryAddress: fields.deliveryAddress,
-        nearestLandmark: fields.nearestLandmark,
+        branch: fields.branch,
+        ...deliveryPayload,
+        orderNote: fields.orderNote,
         orderType,
         mealPeriod,
         orderDate: fields.orderDate,
         orderTime: fields.orderTime,
         paymentMethod,
         items: cartItems,
+        subtotal,
+        deliveryFee: activeDeliveryFee,
         total: grandTotal,
       });
 
-      // Save order details to sessionStorage to survive page refresh
+      sessionStorage.setItem('amazingTastePendingOrder', JSON.stringify(receipt));
+      setPendingOrder(receipt);
+    } catch (err) {
+      setErrors((current) => ({ ...current, form: err.message }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const confirmMockPayment = async () => {
+    if (!pendingOrder) return;
+
+    setIsSubmitting(true);
+    try {
+      const paidOrder = await orderService.confirmMockPayment(pendingOrder.id);
       sessionStorage.setItem(
         'amazingTasteLastOrder',
         JSON.stringify({
-          orderNumber: receipt.orderNumber,
-          customerName: receipt.fullName,
-          orderType: receipt.orderType,
-          deliveryMethod: receipt.deliveryMethod,
-          mealPeriod: receipt.mealPeriod,
-          orderDate: receipt.orderDate,
-          orderTime: receipt.orderTime,
-          total: receipt.total,
-          items: cartItems,
-          paymentMethod: receipt.paymentMethod,
-          subtotal: subtotal,
+          ...paidOrder,
+          orderNumber: paidOrder.id,
+          customerName: paidOrder.customer.name,
+          total: paidOrder.total ?? grandTotal,
+          subtotal,
           deliveryFee: activeDeliveryFee,
-        })
+          items: cartItems,
+        }),
       );
 
+      sessionStorage.removeItem('amazingTastePendingOrder');
       clearCart();
       window.history.pushState({}, '', '/success');
       window.dispatchEvent(new Event('popstate'));
@@ -141,9 +194,23 @@ export default function CheckoutPage({ onNavigateMenu }) {
     }
   };
 
+  const failMockPayment = async () => {
+    if (!pendingOrder) return;
+
+    setIsSubmitting(true);
+    try {
+      const failedOrder = await orderService.failMockPayment(pendingOrder.id);
+      sessionStorage.setItem('amazingTasteLastFailedOrder', JSON.stringify(failedOrder));
+      window.history.pushState({}, '', '/payment-failed');
+      window.dispatchEvent(new Event('popstate'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
-      <Header cartCount={cartCount} cartHref="/checkout" orderHref="/checkout" />
+      <Header orderHref="/checkout" onHomeClick={onNavigateHome} onMenuClick={onNavigateMenu} />
       <main id="landing-page-root" className="checkout-page">
         <FigmaBackgroundIllustrations />
         <section id="checkout" className="checkout-shell">
@@ -175,14 +242,29 @@ export default function CheckoutPage({ onNavigateMenu }) {
                     disabled={isSubmitting}
                   />
                   <CheckoutField
+                    error={errors.emailAddress}
                     label="Email Address"
-                    placeholder="Enter your email address optional"
+                    placeholder="Enter your email address"
                     type="email"
                     value={fields.emailAddress}
                     onChange={(value) => updateField('emailAddress', value)}
                     disabled={isSubmitting}
                   />
                 </div>
+              </CheckoutSection>
+
+              <CheckoutSection title="Branch" error={errors.branch}>
+                <OptionGrid>
+                  {checkoutSettings.branches.map((branch) => (
+                    <OptionButton
+                      isActive={fields.branch === branch}
+                      key={branch}
+                      label={branch}
+                      onClick={() => updateField('branch', branch)}
+                      disabled={isSubmitting}
+                    />
+                  ))}
+                </OptionGrid>
               </CheckoutSection>
 
               <CheckoutSection title="Delivery Method" error={errors.deliveryMethod}>
@@ -192,7 +274,7 @@ export default function CheckoutPage({ onNavigateMenu }) {
                       isActive={deliveryMethod === method}
                       key={method}
                       label={method}
-                      onClick={() => setDeliveryMethod(method)}
+                      onClick={() => selectDeliveryMethod(method)}
                       disabled={isSubmitting}
                     />
                   ))}
@@ -210,16 +292,10 @@ export default function CheckoutPage({ onNavigateMenu }) {
                       <CheckoutField
                         error={errors.deliveryAddress}
                         label="Delivery Address"
-                        placeholder="Enter delivery address"
+                        placeholder="Enter your full delivery address"
                         value={fields.deliveryAddress}
                         onChange={(value) => updateField('deliveryAddress', value)}
-                        disabled={isSubmitting}
-                      />
-                      <CheckoutField
-                        label="Nearest Landmark"
-                        placeholder="Nearest landmark optional"
-                        value={fields.nearestLandmark}
-                        onChange={(value) => updateField('nearestLandmark', value)}
+                        helpText="Please include street, area, and any useful direction."
                         disabled={isSubmitting}
                       />
                     </motion.div>
@@ -236,6 +312,13 @@ export default function CheckoutPage({ onNavigateMenu }) {
                     </motion.p>
                   )}
                 </AnimatePresence>
+                <CheckoutField
+                  label="Order Note"
+                  placeholder="Optional note for the restaurant"
+                  value={fields.orderNote}
+                  onChange={(value) => updateField('orderNote', value)}
+                  disabled={isSubmitting}
+                />
               </CheckoutSection>
 
               <CheckoutSection title="Order Timing">
@@ -324,7 +407,7 @@ export default function CheckoutPage({ onNavigateMenu }) {
                   <div className="summary-items">
                     {cartItems.map((item) => (
                       <article className="summary-item" key={item.id}>
-                        <img src={item.image} alt={item.name} loading="lazy" />
+                        <img src={item.image} alt={item.name} loading="lazy" decoding="async" />
                         <div>
                           <h3>{item.name}</h3>
                           <span>{formatPrice(item.price, item.currency)} each</span>
@@ -349,7 +432,11 @@ export default function CheckoutPage({ onNavigateMenu }) {
                   <SummaryLine label="Delivery fee" value={formatPrice(activeDeliveryFee)} />
                   <SummaryLine isStrong label="Grand total" value={formatPrice(grandTotal)} />
                   <div className="checkout-detail-list">
+                    <span>Branch: {fields.branch}</span>
                     <span>Delivery Method: {deliveryMethod}</span>
+                    {deliveryMethod === 'Delivery' ? (
+                      <span>Delivery Address: {fields.deliveryAddress || 'Not selected'}</span>
+                    ) : null}
                     <span>Order Type: {orderType}</span>
                     {orderType === 'Schedule Order' ? (
                       <>
@@ -361,15 +448,29 @@ export default function CheckoutPage({ onNavigateMenu }) {
                     <span>Payment Method: {paymentMethod}</span>
                   </div>
                   {errors.form ? <p className="checkout-form-error">{errors.form}</p> : null}
-                  <motion.button
-                    className="place-order-button"
-                    type="submit"
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Placing Order...' : 'Place Order'}
-                  </motion.button>
+                  {pendingOrder ? (
+                    <div className="checkout-payment-step">
+                      <p>
+                        Mock payment step ready for Paystack integration. Order {pendingOrder.id} is pending payment.
+                      </p>
+                      <button className="place-order-button" type="button" onClick={confirmMockPayment} disabled={isSubmitting}>
+                        {isSubmitting ? <LogoLoader compact text="Confirming payment..." /> : 'Confirm Mock Payment'}
+                      </button>
+                      <button className="checkout-secondary-action" type="button" onClick={failMockPayment} disabled={isSubmitting}>
+                        Simulate Failed Payment
+                      </button>
+                    </div>
+                  ) : (
+                    <motion.button
+                      className="place-order-button"
+                      type="submit"
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? <LogoLoader compact text="Creating pending order..." /> : 'Create Order'}
+                    </motion.button>
+                  )}
                 </>
               ) : (
                 <div className="checkout-empty-cart">
@@ -401,15 +502,21 @@ function CheckoutSection({ children, error, title }) {
   );
 }
 
-function CheckoutField({ error, icon, label, onChange, disabled, ...props }) {
+function CheckoutField({ error, helpText, icon, label, onChange, disabled, ...props }) {
   return (
     <label className="checkout-field">
       <span>{label}</span>
       <div>
         {icon}
-        <input {...props} disabled={disabled} onChange={(event) => onChange(event.target.value)} />
+        <input
+          {...props}
+          disabled={disabled}
+          autoComplete={props.autoComplete || 'on'}
+          onChange={(event) => onChange(event.target.value)}
+        />
       </div>
       {error ? <small>{error}</small> : null}
+      {helpText ? <small className="checkout-field-help">{helpText}</small> : null}
     </label>
   );
 }

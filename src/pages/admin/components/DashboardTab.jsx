@@ -5,13 +5,14 @@ import { OrderStatus } from './OrderStatus';
 
 const statusFilters = [
   { id: 'all', label: 'All Orders' },
-  { id: 'new', label: 'New' },
-  { id: 'accepted', label: 'Accepted' },
+  { id: 'pending_payment', label: 'Pending Payment' },
+  { id: 'paid', label: 'Paid' },
   { id: 'preparing', label: 'Preparing' },
-  { id: 'ready', label: 'Ready' },
+  { id: 'ready_for_pickup', label: 'Ready for Pickup' },
+  { id: 'out_for_delivery', label: 'Out for Delivery' },
   { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
-  { id: 'scheduled', label: 'Scheduled' },
+  { id: 'failed_payment', label: 'Failed Payment' },
 ];
 
 const itemVariants = {
@@ -29,27 +30,31 @@ function getDeliveryFee(order) {
 function getCounts(orders) {
   return statusFilters.reduce((counts, filter) => {
     if (filter.id === 'all') counts[filter.id] = orders.length;
-    else if (filter.id === 'scheduled') counts[filter.id] = orders.filter((order) => order.orderType === 'Scheduled Order').length;
-    else counts[filter.id] = orders.filter((order) => order.status === filter.id).length;
+    else counts[filter.id] = orders.filter((order) => order.order_status === filter.id).length;
     return counts;
   }, {});
 }
 
 function normalizeDate(dateText) {
-  return new Date(dateText.replace(',', '')).toISOString().slice(0, 10);
+  const date = new Date(String(dateText).replace(',', ''));
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
 
 export default function DashboardTab({ orders, products, onPageChange, onOpenOrder }) {
-  const totalRevenue = orders.reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
-  const pendingPayment = orders.filter((order) => order.paymentStatus === 'Pending').reduce((sum, order) => sum + getOrderTotal(order), 0);
-  const todayOrders = orders.filter((order) => normalizeDate(order.date) === '2026-05-24');
-  const todayRevenue = todayOrders.reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
+  const paidOrders = orders.filter((order) => order.payment_status === 'paid');
+  const totalRevenue = paidOrders.reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
+  const pendingPayment = orders.filter((order) => order.payment_status === 'pending').reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayOrders = orders.filter((order) => normalizeDate(order.date) === today);
+  const todayRevenue = todayOrders
+    .filter((order) => order.payment_status === 'paid')
+    .reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
   const counts = getCounts(orders);
   
   const metrics = [
     ['Total Orders', orders.length],
     ["Today's Orders", todayOrders.length],
-    ['Pending Orders', (counts.new || 0) + (counts.accepted || 0) + (counts.preparing || 0) + (counts.ready || 0)],
+    ['Pending Orders', (counts.paid || 0) + (counts.preparing || 0) + (counts.ready_for_pickup || 0) + (counts.out_for_delivery || 0)],
     ['Completed Orders', counts.completed || 0],
     ['Cancelled Orders', counts.cancelled || 0],
     ['Scheduled Orders', counts.scheduled || 0],
@@ -60,7 +65,7 @@ export default function DashboardTab({ orders, products, onPageChange, onOpenOrd
     ['Available Menu Items', products.filter((item) => item.available).length],
     ['Unavailable Menu Items', products.filter((item) => !item.available).length],
   ];
-  const recentOrders = orders.slice(0, 4);
+  const recentOrders = orders.filter((order) => order.payment_status === 'paid').slice(0, 4);
 
   return (
     <>
@@ -104,7 +109,7 @@ export default function DashboardTab({ orders, products, onPageChange, onOpenOrd
             <span>{order.items.map((item) => item.name).join(', ')}</span>
             <strong>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</strong>
             <span>{order.paymentStatus}</span>
-            <OrderStatus status={order.status} />
+            <OrderStatus status={order.order_status} />
             <span>{order.orderType}</span>
             <span>{order.deliveryMethod}</span>
             <span>{order.date}</span>

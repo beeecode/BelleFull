@@ -13,7 +13,7 @@ export function AboutSection() {
         <div className="about-copy">
           <p>{projectDetails.preservedCopy.welcome.body}</p>
           <div className="operator-card">
-            <img src={inspirationAssets.authorPortrait} alt="" loading="lazy" />
+            <img src={inspirationAssets.authorPortrait} alt="" loading="lazy" decoding="async" />
             <div>
               <strong>Amazing Taste Delicacies</strong>
               <span>The Pasta Haven in Osogbo</span>

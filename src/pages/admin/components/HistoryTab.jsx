@@ -17,11 +17,13 @@ function getDeliveryFee(order) {
 }
 
 function normalizeDate(dateText) {
-  return new Date(dateText.replace(',', '')).toISOString().slice(0, 10);
+  const date = new Date(String(dateText).replace(',', ''));
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
 
 function normalizeTime(dateText) {
-  return new Date(dateText.replace(',', '')).toTimeString().slice(0, 5);
+  const date = new Date(String(dateText).replace(',', ''));
+  return Number.isNaN(date.getTime()) ? '' : date.toTimeString().slice(0, 5);
 }
 
 function AdminSearch({ value, onChange, placeholder = 'Search' }) {
@@ -52,7 +54,7 @@ export default function HistoryTab({ orders, onOpenOrder }) {
   });
 
   const historyOrders = orders.filter((order) => {
-    if (!['completed', 'cancelled'].includes(order.status)) return false;
+    if (!['completed', 'cancelled', 'failed_payment'].includes(order.order_status)) return false;
     const orderDate = normalizeDate(order.date);
     const orderTime = normalizeTime(order.date);
     const query = filters.query.toLowerCase();
@@ -66,8 +68,8 @@ export default function HistoryTab({ orders, onOpenOrder }) {
         .join(' ')
         .toLowerCase()
         .includes(query) &&
-      (filters.status === 'all' || order.status === filters.status) &&
-      (filters.payment === 'all' || order.paymentMethod === filters.payment) &&
+      (filters.status === 'all' || order.order_status === filters.status) &&
+      (filters.payment === 'all' || order.payment_status === filters.payment) &&
       (filters.delivery === 'all' || order.deliveryMethod === filters.delivery) &&
       (!filters.startDate || orderDate >= filters.startDate) &&
       (!filters.endDate || orderDate <= filters.endDate) &&
@@ -117,12 +119,13 @@ export default function HistoryTab({ orders, onOpenOrder }) {
           <option value="all">All status</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
+          <option value="failed_payment">Failed Payment</option>
         </select>
         <select value={filters.payment} onChange={(event) => updateFilter('payment', event.target.value)}>
-          <option value="all">All payments</option>
-          <option value="Pay on Delivery">Pay on Delivery</option>
-          <option value="Bank Transfer">Bank Transfer</option>
-          <option value="Online Payment">Online Payment</option>
+          <option value="all">All payment status</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="failed">Failed</option>
         </select>
         <select value={filters.delivery} onChange={(event) => updateFilter('delivery', event.target.value)}>
           <option value="all">All delivery</option>
@@ -138,8 +141,8 @@ export default function HistoryTab({ orders, onOpenOrder }) {
             <span>{order.date}</span>
             <span>{order.items.map((item) => item.name).join(', ')}</span>
             <strong>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</strong>
-            <span>{order.paymentMethod}</span>
-            <OrderStatus status={order.status} />
+            <span>{order.paymentStatus}</span>
+            <OrderStatus status={order.order_status} />
           </button>
         ))}
       </motion.div>
