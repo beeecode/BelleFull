@@ -3,6 +3,9 @@ import { X, CheckCircle2, ChefHat, MessageSquare, Truck, XCircle } from 'lucide-
 import { OrderStatus, statusMeta } from '../../pages/admin/components/OrderStatus';
 import { formatPrice } from '../../utils/formatPrice';
 import { getWhatsAppUrl } from '../../utils/contactLinks';
+import { formatOrderDate } from '../../utils/orderDates';
+import { calculateOrderSubtotal, calculateOrderTotal, getOrderDeliveryFee } from '../../utils/orderTotals';
+import { ORDER_STATUSES, PAYMENT_STATUSES } from '../../constants/orderContracts';
 
 function DetailRow({ label, value }) {
   return (
@@ -16,15 +19,15 @@ function DetailRow({ label, value }) {
 export function OrderDetailsModal({ order, onClose, onStatusChange }) {
   if (!order) return null;
 
-  const subtotal = order.items.reduce((total, item) => total + item.price * item.quantity, 0);
-  const deliveryFee = order.deliveryMethod === 'Delivery' ? 1000 : 0;
+  const subtotal = calculateOrderSubtotal(order);
+  const deliveryFee = getOrderDeliveryFee(order);
 
-  const canUpdatePreparation = order.payment_status === 'paid';
+  const canUpdatePreparation = order.payment_status === PAYMENT_STATUSES.PAID;
   const actions = [
-    ['Start Preparing', 'preparing'],
-    [order.deliveryMethod === 'Delivery' ? 'Out for Delivery' : 'Ready for Pickup', order.deliveryMethod === 'Delivery' ? 'out_for_delivery' : 'ready_for_pickup'],
-    ['Mark as Completed', 'completed'],
-    ['Cancel Order', 'cancelled'],
+    ['Start Preparing', ORDER_STATUSES.PREPARING],
+    [order.deliveryMethod === 'Delivery' ? 'Out for Delivery' : 'Ready for Pickup', order.deliveryMethod === 'Delivery' ? ORDER_STATUSES.OUT_FOR_DELIVERY : ORDER_STATUSES.READY_FOR_PICKUP],
+    ['Mark as Completed', ORDER_STATUSES.COMPLETED],
+    ['Cancel Order', ORDER_STATUSES.CANCELLED],
   ];
   const whatsappMessage =
     `Hello ${order.customer.name}, your order ${order.id} from Amazing Taste Delicacies is currently ${statusMeta[order.order_status]?.label || order.order_status}.`;
@@ -38,7 +41,7 @@ export function OrderDetailsModal({ order, onClose, onStatusChange }) {
         <header>
           <div>
             <h2>Order {order.id}</h2>
-            <p>{order.date}</p>
+            <p>{formatOrderDate(order)}</p>
           </div>
           <OrderStatus status={order.order_status} />
         </header>
@@ -72,7 +75,7 @@ export function OrderDetailsModal({ order, onClose, onStatusChange }) {
           ))}
           <DetailRow label="Subtotal" value={formatPrice(subtotal)} />
           <DetailRow label="Delivery fee" value={formatPrice(deliveryFee)} />
-          <DetailRow label="Grand total" value={formatPrice(subtotal + deliveryFee)} />
+          <DetailRow label="Grand total" value={formatPrice(calculateOrderTotal(order))} />
         </section>
         {!canUpdatePreparation ? (
           <p className="admin-payment-note">
@@ -82,20 +85,20 @@ export function OrderDetailsModal({ order, onClose, onStatusChange }) {
         <div className="admin-detail-actions">
           {actions.map(([label, status]) => (
             <button
-              className={status === 'cancelled' ? 'admin-outline-danger' : 'admin-primary-button'}
+              className={status === ORDER_STATUSES.CANCELLED ? 'admin-outline-danger' : 'admin-primary-button'}
               type="button"
               key={status}
-              disabled={!canUpdatePreparation && status !== 'cancelled'}
+              disabled={!canUpdatePreparation && status !== ORDER_STATUSES.CANCELLED}
               onClick={() => {
                 onStatusChange(order.id, status);
                 onClose();
               }}
             >
-              {status === 'cancelled' ? (
+              {status === ORDER_STATUSES.CANCELLED ? (
                 <XCircle size={15} strokeWidth={1.8} aria-hidden="true" />
-              ) : status === 'preparing' ? (
+              ) : status === ORDER_STATUSES.PREPARING ? (
                 <ChefHat size={15} strokeWidth={1.8} aria-hidden="true" />
-              ) : status === 'out_for_delivery' ? (
+              ) : status === ORDER_STATUSES.OUT_FOR_DELIVERY ? (
                 <Truck size={15} strokeWidth={1.8} aria-hidden="true" />
               ) : (
                 <CheckCircle2 size={15} strokeWidth={1.8} aria-hidden="true" />

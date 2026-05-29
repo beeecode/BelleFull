@@ -1,63 +1,43 @@
 import { motion } from 'framer-motion';
-import { Eye, Plus, History, Settings2, Home, Package } from 'lucide-react';
+import { Eye, Plus, History, Settings2 } from 'lucide-react';
 import { formatPrice } from '../../../utils/formatPrice';
+import { formatOrderDate, getOrderDateKey } from '../../../utils/orderDates';
+import { calculateOrderTotal } from '../../../utils/orderTotals';
+import { ORDER_STATUS_OPTIONS, ORDER_STATUSES, PAYMENT_STATUSES } from '../../../constants/orderContracts';
 import { OrderStatus } from './OrderStatus';
-
-const statusFilters = [
-  { id: 'all', label: 'All Orders' },
-  { id: 'pending_payment', label: 'Pending Payment' },
-  { id: 'paid', label: 'Paid' },
-  { id: 'preparing', label: 'Preparing' },
-  { id: 'ready_for_pickup', label: 'Ready for Pickup' },
-  { id: 'out_for_delivery', label: 'Out for Delivery' },
-  { id: 'completed', label: 'Completed' },
-  { id: 'cancelled', label: 'Cancelled' },
-  { id: 'failed_payment', label: 'Failed Payment' },
-];
 
 const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
 };
 
-function getOrderTotal(order) {
-  return order.items.reduce((total, item) => total + item.price * item.quantity, 0);
-}
-
-function getDeliveryFee(order) {
-  return order.deliveryMethod === 'Delivery' ? 1000 : 0;
-}
-
 function getCounts(orders) {
-  return statusFilters.reduce((counts, filter) => {
+  return ORDER_STATUS_OPTIONS.reduce((counts, filter) => {
     if (filter.id === 'all') counts[filter.id] = orders.length;
     else counts[filter.id] = orders.filter((order) => order.order_status === filter.id).length;
     return counts;
   }, {});
 }
 
-function normalizeDate(dateText) {
-  const date = new Date(String(dateText).replace(',', ''));
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-}
-
 export default function DashboardTab({ orders, products, onPageChange, onOpenOrder }) {
-  const paidOrders = orders.filter((order) => order.payment_status === 'paid');
-  const totalRevenue = paidOrders.reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
-  const pendingPayment = orders.filter((order) => order.payment_status === 'pending').reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const paidOrders = orders.filter((order) => order.payment_status === PAYMENT_STATUSES.PAID);
+  const totalRevenue = paidOrders.reduce((sum, order) => sum + calculateOrderTotal(order), 0);
+  const pendingPayment = orders
+    .filter((order) => order.payment_status === PAYMENT_STATUSES.PENDING)
+    .reduce((sum, order) => sum + calculateOrderTotal(order), 0);
   const today = new Date().toISOString().slice(0, 10);
-  const todayOrders = orders.filter((order) => normalizeDate(order.date) === today);
+  const todayOrders = orders.filter((order) => getOrderDateKey(order) === today);
   const todayRevenue = todayOrders
-    .filter((order) => order.payment_status === 'paid')
-    .reduce((sum, order) => sum + getOrderTotal(order) + getDeliveryFee(order), 0);
+    .filter((order) => order.payment_status === PAYMENT_STATUSES.PAID)
+    .reduce((sum, order) => sum + calculateOrderTotal(order), 0);
   const counts = getCounts(orders);
   
   const metrics = [
     ['Total Orders', orders.length],
     ["Today's Orders", todayOrders.length],
-    ['Pending Orders', (counts.paid || 0) + (counts.preparing || 0) + (counts.ready_for_pickup || 0) + (counts.out_for_delivery || 0)],
-    ['Completed Orders', counts.completed || 0],
-    ['Cancelled Orders', counts.cancelled || 0],
-    ['Scheduled Orders', counts.scheduled || 0],
+    ['Pending Orders', (counts[ORDER_STATUSES.PAID] || 0) + (counts[ORDER_STATUSES.PREPARING] || 0) + (counts[ORDER_STATUSES.READY_FOR_PICKUP] || 0) + (counts[ORDER_STATUSES.OUT_FOR_DELIVERY] || 0)],
+    ['Completed Orders', counts[ORDER_STATUSES.COMPLETED] || 0],
+    ['Cancelled Orders', counts[ORDER_STATUSES.CANCELLED] || 0],
+    ['Preparing Orders', counts[ORDER_STATUSES.PREPARING] || 0],
     ['Total Revenue', formatPrice(totalRevenue)],
     ["Today's Revenue", formatPrice(todayRevenue)],
     ['Pending Payment', formatPrice(pendingPayment)],
@@ -65,7 +45,7 @@ export default function DashboardTab({ orders, products, onPageChange, onOpenOrd
     ['Available Menu Items', products.filter((item) => item.available).length],
     ['Unavailable Menu Items', products.filter((item) => !item.available).length],
   ];
-  const recentOrders = orders.filter((order) => order.payment_status === 'paid').slice(0, 4);
+  const recentOrders = orders.filter((order) => order.payment_status === PAYMENT_STATUSES.PAID).slice(0, 4);
 
   return (
     <>
@@ -91,7 +71,7 @@ export default function DashboardTab({ orders, products, onPageChange, onOpenOrd
         </button>
         <button className="admin-primary-button" type="button" onClick={() => onPageChange('orders')}>
           <History size={15} strokeWidth={1.8} aria-hidden="true" />
-          View Scheduled Orders
+          View Preparing Orders
         </button>
         <button className="admin-primary-button" type="button" onClick={() => onPageChange('settings')}>
           <Settings2 size={15} strokeWidth={1.8} aria-hidden="true" />
@@ -107,12 +87,12 @@ export default function DashboardTab({ orders, products, onPageChange, onOpenOrd
             <span>{order.id}</span>
             <span>{order.customer.name}<small>{order.customer.phone}</small></span>
             <span>{order.items.map((item) => item.name).join(', ')}</span>
-            <strong>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</strong>
+            <strong>{formatPrice(calculateOrderTotal(order))}</strong>
             <span>{order.paymentStatus}</span>
             <OrderStatus status={order.order_status} />
             <span>{order.orderType}</span>
             <span>{order.deliveryMethod}</span>
-            <span>{order.date}</span>
+            <span>{formatOrderDate(order)}</span>
           </button>
         ))}
       </div>

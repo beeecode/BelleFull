@@ -1,7 +1,11 @@
 /**
- * Authentication service handling admin login and logout flow.
+ * Mock authentication service handling admin login and logout flow.
  * Once connected to the backend, these functions will call actual REST APIs (e.g., /api/auth/login).
+ * This localStorage flag is development-only and must not be treated as production security.
  */
+
+const MOCK_ADMIN_AUTH_KEY = 'amazingTasteAdmin';
+const ADMIN_ROUTES = new Set(['/admin', '/admin/login']);
 
 export const authService = {
   /**
@@ -17,7 +21,7 @@ export const authService = {
         if (!email.trim() || !password.trim()) {
           reject(new Error('Enter your email or username and password.'));
         } else {
-          window.localStorage.setItem('amazingTasteAdmin', 'active');
+          window.localStorage.setItem(MOCK_ADMIN_AUTH_KEY, 'active');
           resolve(true);
         }
       }, 500);
@@ -31,7 +35,7 @@ export const authService = {
   async logout() {
     return new Promise((resolve) => {
       setTimeout(() => {
-        window.localStorage.removeItem('amazingTasteAdmin');
+        window.localStorage.removeItem(MOCK_ADMIN_AUTH_KEY);
         resolve(true);
       }, 300);
     });
@@ -42,6 +46,15 @@ export const authService = {
    * @returns {boolean}
    */
   isAuthenticated() {
-    return window.localStorage.getItem('amazingTasteAdmin') === 'active';
+    return window.localStorage.getItem(MOCK_ADMIN_AUTH_KEY) === 'active';
+  },
+
+  getAdminRedirectPath(pathname = window.location.pathname) {
+    if (!ADMIN_ROUTES.has(pathname)) return null;
+    const isAuthenticated = this.isAuthenticated();
+
+    if (!isAuthenticated && pathname === '/admin') return '/admin/login';
+    if (isAuthenticated && pathname === '/admin/login') return '/admin';
+    return null;
   },
 };

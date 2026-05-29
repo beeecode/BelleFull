@@ -12,15 +12,15 @@ const orderItem = (id, quantity = 1) => ({
 
 export const orderFilters = [
   { id: '#345', state: 'completed' },
-  { id: '#346', state: 'rejected' },
+  { id: '#346', state: 'cancelled' },
   { id: '#347', state: 'completed' },
   { id: '#348', state: 'completed' },
   { id: '#349', state: 'completed' },
-  { id: '#350', state: 'rejected' },
-  { id: '#351', state: 'rejected' },
-  { id: '#352', state: 'rejected' },
-  { id: '#353', state: 'rejected' },
-  { id: '#354', state: 'rejected' },
+  { id: '#350', state: 'cancelled' },
+  { id: '#351', state: 'cancelled' },
+  { id: '#352', state: 'cancelled' },
+  { id: '#353', state: 'cancelled' },
+  { id: '#354', state: 'cancelled' },
 ];
 
 export const adminOrders = [
@@ -28,14 +28,14 @@ export const adminOrders = [
     id: '#351',
     date: '24 May 2026, 08:28 PM',
     avatar: avatarGreen,
-    status: 'pending',
+    status: 'pending_payment',
     items: [orderItem('cheesy-pizza'), orderItem('jollof-rice')],
   },
   {
     id: '#350',
     date: '24 May 2026, 07:42 PM',
     avatar: avatarOrange,
-    status: 'rejected',
+    status: 'cancelled',
     items: [orderItem('pasta'), orderItem('shawarma')],
   },
   {
@@ -49,21 +49,21 @@ export const adminOrders = [
     id: '#348',
     date: '24 May 2026, 05:36 PM',
     avatar: avatarGreen,
-    status: 'pending',
+    status: 'pending_payment',
     items: [orderItem('barbecue'), orderItem('small-chops')],
   },
   {
     id: '#347',
     date: '24 May 2026, 04:50 PM',
     avatar: avatarOrange,
-    status: 'pending',
+    status: 'pending_payment',
     items: [orderItem('pepper-soup'), orderItem('fish-pepper-soup')],
   },
   {
     id: '#346',
     date: '24 May 2026, 03:21 PM',
     avatar: avatarPurple,
-    status: 'pending',
+    status: 'pending_payment',
     items: [orderItem('burger'), orderItem('parfait')],
   },
 ];

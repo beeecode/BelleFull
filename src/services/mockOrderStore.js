@@ -1,15 +1,16 @@
 import { adminOrders } from '../data/adminOrders';
 import { customers } from '../data/customers';
+import {
+  getPaymentStatusLabel,
+  normalizeOrderStatus,
+  normalizePaymentStatus,
+  ORDER_STATUSES,
+  PAYMENT_STATUSES,
+} from '../constants/orderContracts';
+import { formatOrderDate, toOrderTimestamp } from '../utils/orderDates';
+import { calculateOrderSubtotal, withOrderTotals } from '../utils/orderTotals';
 
 const ORDERS_KEY = 'atd_admin_orders';
-
-const finalStatusMap = {
-  new: 'pending_payment',
-  pending: 'pending_payment',
-  accepted: 'paid',
-  ready: 'ready_for_pickup',
-  rejected: 'cancelled',
-};
 
 const readOrders = () => {
   try {
@@ -23,23 +24,6 @@ const readOrders = () => {
 const writeOrders = (orders) => {
   window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 };
-
-const formatDate = (date = new Date()) =>
-  date.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-function inferPaymentStatus(orderStatus, paymentStatus) {
-  const normalizedPaymentStatus = String(paymentStatus || '').toLowerCase();
-  if (['paid', 'pending', 'failed'].includes(normalizedPaymentStatus)) return normalizedPaymentStatus;
-  if (orderStatus === 'failed_payment') return 'failed';
-  if (orderStatus === 'pending_payment') return 'pending';
-  return 'paid';
-}
 
 function stripRemovedLocationFields(value) {
   const nextValue = { ...value };
@@ -60,9 +44,10 @@ function stripRemovedLocationFields(value) {
 export function normalizeMockOrder(order, index = 0) {
   const orderWithoutRemovedLocation = stripRemovedLocationFields(order);
 
-  const orderStatus = finalStatusMap[order.order_status || order.status] || order.order_status || order.status || 'pending_payment';
-  const payment_status = inferPaymentStatus(orderStatus, order.payment_status || order.paymentStatus);
+  const orderStatus = normalizeOrderStatus(order.order_status || order.status);
+  const payment_status = normalizePaymentStatus(order.payment_status || order.paymentStatus, orderStatus);
   const customer = stripRemovedLocationFields(order.customer || customers[index % customers.length] || {});
+  const createdAt = toOrderTimestamp(order.createdAt || order.date);
 
   const delivery_method = String(
     order.delivery_method ||
@@ -75,12 +60,26 @@ export function normalizeMockOrder(order, index = 0) {
   const deliveryMethod = delivery_method === 'delivery' ? 'Delivery' : 'Pickup';
   const resolvedAddress = order.delivery_address || order.deliveryAddress || customer.address || '';
   const delivery_address = delivery_method === 'delivery' ? resolvedAddress : null;
+  const storedDeliveryFee = Number(order.deliveryFee ?? order.delivery_fee);
+  const deliveryFee = Number.isFinite(storedDeliveryFee)
+    ? Math.max(0, storedDeliveryFee)
+    : delivery_method === 'delivery'
+      ? 1000
+      : 0;
+  const subtotal = Number.isFinite(Number(order.subtotal))
+    ? Math.max(0, Number(order.subtotal))
+    : calculateOrderSubtotal(order);
+  const total = Number.isFinite(Number(order.total))
+    ? Math.max(0, Number(order.total))
+    : subtotal + deliveryFee;
 
-  return {
+  return withOrderTotals({
     ...orderWithoutRemovedLocation,
     id: order.id || order.orderNumber || `ATD-${Math.floor(100000 + Math.random() * 900000)}`,
     orderNumber: order.orderNumber || order.id,
-    date: order.date || formatDate(),
+    createdAt,
+    date: createdAt,
+    displayDate: formatOrderDate(createdAt),
     customer: {
       ...customer,
       address: delivery_address || '',
@@ -93,17 +92,27 @@ export function normalizeMockOrder(order, index = 0) {
     orderNote: order.orderNote || '',
     paymentMethod: order.paymentMethod || 'Online Payment',
     payment_status,
-    paymentStatus: payment_status.charAt(0).toUpperCase() + payment_status.slice(1),
+    paymentStatus: getPaymentStatusLabel(payment_status),
     order_status: orderStatus,
     status: orderStatus,
+    subtotal,
+    deliveryFee,
+    total,
     paymentReference: order.paymentReference || order.payment_reference || null,
-  };
+  });
 }
 
 function getInitialOrders() {
   return adminOrders.map((order, index) => {
-    const seededStatuses = ['pending_payment', 'paid', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'completed'];
-    const order_status = seededStatuses[index] || 'pending_payment';
+    const seededStatuses = [
+      ORDER_STATUSES.PENDING_PAYMENT,
+      ORDER_STATUSES.PAID,
+      ORDER_STATUSES.PREPARING,
+      ORDER_STATUSES.READY_FOR_PICKUP,
+      ORDER_STATUSES.OUT_FOR_DELIVERY,
+      ORDER_STATUSES.COMPLETED,
+    ];
+    const order_status = seededStatuses[index] || ORDER_STATUSES.PENDING_PAYMENT;
 
     return normalizeMockOrder(
       {
@@ -115,10 +124,10 @@ function getInitialOrders() {
         scheduledDate: index === 4 ? '2026-05-24' : '',
         scheduledTime: index === 4 ? '7:30 PM' : '',
         paymentMethod: 'Online Payment',
-        payment_status: order_status === 'pending_payment' ? 'pending' : 'paid',
+        payment_status: order_status === ORDER_STATUSES.PENDING_PAYMENT ? PAYMENT_STATUSES.PENDING : PAYMENT_STATUSES.PAID,
         order_status,
         status: order_status,
-        paymentReference: order_status === 'pending_payment' ? null : `MOCK-${order.id.replace(/\D/g, '')}`,
+        paymentReference: order_status === ORDER_STATUSES.PENDING_PAYMENT ? null : `MOCK-${order.id.replace(/\D/g, '')}`,
       },
       index,
     );
@@ -149,7 +158,7 @@ export function createMockOrder(orderDetails) {
   const order = normalizeMockOrder({
     id: orderNumber,
     orderNumber,
-    date: formatDate(),
+    createdAt: toOrderTimestamp(),
     customer: {
       name: orderDetails.fullName,
       phone: orderDetails.phoneNumber,
@@ -168,10 +177,10 @@ export function createMockOrder(orderDetails) {
     scheduledDate: orderDetails.orderDate,
     scheduledTime: orderDetails.orderTime,
     paymentMethod: orderDetails.paymentMethod || 'Online Payment',
-    payment_status: 'pending',
+    payment_status: PAYMENT_STATUSES.PENDING,
     paymentStatus: 'Pending',
-    order_status: 'pending_payment',
-    status: 'pending_payment',
+    order_status: ORDER_STATUSES.PENDING_PAYMENT,
+    status: ORDER_STATUSES.PENDING_PAYMENT,
     subtotal: orderDetails.subtotal,
     deliveryFee: orderDetails.deliveryFee,
     total: orderDetails.total,
@@ -185,31 +194,32 @@ export function createMockOrder(orderDetails) {
 
 export function markMockOrderPaid(orderId) {
   return updateMockOrder(orderId, () => ({
-    payment_status: 'paid',
+    payment_status: PAYMENT_STATUSES.PAID,
     paymentStatus: 'Paid',
-    order_status: 'paid',
-    status: 'paid',
+    order_status: ORDER_STATUSES.PAID,
+    status: ORDER_STATUSES.PAID,
     paymentReference: `MOCK-${Date.now()}`,
   }));
 }
 
 export function markMockOrderFailed(orderId) {
   return updateMockOrder(orderId, () => ({
-    payment_status: 'failed',
+    payment_status: PAYMENT_STATUSES.FAILED,
     paymentStatus: 'Failed',
-    order_status: 'failed_payment',
-    status: 'failed_payment',
+    order_status: ORDER_STATUSES.FAILED_PAYMENT,
+    status: ORDER_STATUSES.FAILED_PAYMENT,
     paymentReference: `MOCK-FAILED-${Date.now()}`,
   }));
 }
 
 export function updateMockOrderStatus(orderId, status) {
+  const nextStatus = normalizeOrderStatus(status);
   return updateMockOrder(orderId, (order) => ({
-    order_status: order.payment_status === 'paid' || ['cancelled', 'failed_payment'].includes(status)
-      ? status
+    order_status: order.payment_status === PAYMENT_STATUSES.PAID || [ORDER_STATUSES.CANCELLED, ORDER_STATUSES.FAILED_PAYMENT].includes(nextStatus)
+      ? nextStatus
       : order.order_status,
-    status: order.payment_status === 'paid' || ['cancelled', 'failed_payment'].includes(status)
-      ? status
+    status: order.payment_status === PAYMENT_STATUSES.PAID || [ORDER_STATUSES.CANCELLED, ORDER_STATUSES.FAILED_PAYMENT].includes(nextStatus)
+      ? nextStatus
       : order.order_status,
   }));
 }

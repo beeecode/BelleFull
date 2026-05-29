@@ -2,19 +2,10 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, X, Check, Eye } from 'lucide-react';
 import { formatPrice } from '../../../utils/formatPrice';
+import { formatOrderDate } from '../../../utils/orderDates';
+import { calculateOrderTotal } from '../../../utils/orderTotals';
+import { ORDER_STATUS_OPTIONS, ORDER_STATUSES } from '../../../constants/orderContracts';
 import { OrderStatus } from './OrderStatus';
-
-const statusFilters = [
-  { id: 'all', label: 'All Orders' },
-  { id: 'pending_payment', label: 'Pending Payment' },
-  { id: 'paid', label: 'Paid' },
-  { id: 'preparing', label: 'Preparing' },
-  { id: 'ready_for_pickup', label: 'Ready for Pickup' },
-  { id: 'out_for_delivery', label: 'Out for Delivery' },
-  { id: 'completed', label: 'Completed' },
-  { id: 'cancelled', label: 'Cancelled' },
-  { id: 'failed_payment', label: 'Failed Payment' },
-];
 
 const pageVariants = {
   visible: { opacity: 1, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.04 } },
@@ -24,16 +15,8 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
 };
 
-function getOrderTotal(order) {
-  return order.items.reduce((total, item) => total + item.price * item.quantity, 0);
-}
-
-function getDeliveryFee(order) {
-  return order.deliveryMethod === 'Delivery' ? 1000 : 0;
-}
-
 function getCounts(orders) {
-  return statusFilters.reduce((counts, filter) => {
+  return ORDER_STATUS_OPTIONS.reduce((counts, filter) => {
     if (filter.id === 'all') counts[filter.id] = orders.length;
     else counts[filter.id] = orders.filter((order) => order.order_status === filter.id).length;
     return counts;
@@ -56,8 +39,8 @@ function AdminSearch({ value, onChange, placeholder = 'Search' }) {
 }
 
 function StatusChip({ filter, count, active, onClick }) {
-  const isRejected = ['cancelled', 'failed_payment'].includes(filter.id);
-  const isComplete = ['paid', 'ready_for_pickup', 'completed', 'all'].includes(filter.id);
+  const isRejected = [ORDER_STATUSES.CANCELLED, ORDER_STATUSES.FAILED_PAYMENT].includes(filter.id);
+  const isComplete = [ORDER_STATUSES.PAID, ORDER_STATUSES.READY_FOR_PICKUP, ORDER_STATUSES.COMPLETED, 'all'].includes(filter.id);
   const Icon = isRejected ? X : Check;
 
   return (
@@ -90,7 +73,7 @@ function OrderCard({ order, onOpen }) {
       <header className="admin-order-card-header">
         <div>
           <h3>Order {order.id}</h3>
-          <p>{order.date}</p>
+          <p>{formatOrderDate(order)}</p>
         </div>
         <img src={order.avatar} alt="" className="admin-order-avatar" loading="lazy" decoding="async" />
       </header>
@@ -115,7 +98,7 @@ function OrderCard({ order, onOpen }) {
       </footer>
       <div className="admin-card-meta">
         <span>{order.customer.name}</span>
-        <span>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</span>
+        <span>{formatPrice(calculateOrderTotal(order))}</span>
         <span>{order.paymentStatus}</span>
       </div>
       <button
@@ -185,7 +168,7 @@ export default function OrdersTab({ orders, onOpenOrder }) {
         </div>
       </motion.div>
       <motion.div className="admin-filter-row" variants={itemVariants} aria-label="Order filters">
-        {statusFilters.map((filter) => (
+        {ORDER_STATUS_OPTIONS.map((filter) => (
           <StatusChip
             filter={filter}
             count={counts[filter.id] ?? 0}

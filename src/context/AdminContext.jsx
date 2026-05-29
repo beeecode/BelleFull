@@ -92,8 +92,12 @@ export function AdminProvider({ children }) {
   };
 
   const deleteCategory = async (categoryName) => {
-    await adminService.deleteCategory(categoryName);
-    setCategories((current) => current.filter((cat) => cat.id !== categoryName));
+    try {
+      await adminService.deleteCategory(categoryName);
+      setCategories((current) => current.filter((cat) => cat.id !== categoryName));
+    } catch (err) {
+      showNotice('Category Not Deleted', err.message || 'This category cannot be deleted yet.');
+    }
   };
 
   const toggleCategoryVisibility = async (categoryId) => {

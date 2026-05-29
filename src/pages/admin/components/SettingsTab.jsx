@@ -9,6 +9,7 @@ import {
   normalizeOpeningHours,
   weekDays,
 } from '../../../utils/openingHours';
+import { validateImageFile, validateSettingsDraft } from '../../../utils/validation';
 
 const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
@@ -46,9 +47,28 @@ export default function SettingsTab({ settings, updateSettings, onLogout, showNo
       showNotice('Invalid Opening Hours', 'Opening time must be earlier than closing time for every open day.');
       return;
     }
+    const settingsErrors = validateSettingsDraft(draft);
+    if (settingsErrors.length > 0) {
+      showNotice('Invalid Settings', settingsErrors[0]);
+      return;
+    }
 
     await updateSettings(draft);
     showNotice('Settings Saved', 'Restaurant settings are saved locally for backend connection.');
+  };
+
+  const handleLogoUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const uploadError = validateImageFile(file);
+
+    if (uploadError) {
+      event.target.value = '';
+      showNotice('Invalid Logo', uploadError);
+      return;
+    }
+
+    showNotice('Logo Selected', 'Logo upload is ready for backend connection.');
   };
 
   return (
@@ -89,7 +109,7 @@ export default function SettingsTab({ settings, updateSettings, onLogout, showNo
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            onChange={() => showNotice('Logo Selected', 'Logo upload is ready for backend connection.')}
+            onChange={handleLogoUpload}
           />
           <div className="admin-upload-box">
             <Upload size={24} />

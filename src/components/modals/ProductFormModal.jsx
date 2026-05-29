@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Image, Save } from 'lucide-react';
-import { formatPrice } from '../../utils/formatPrice';
+import { IMAGE_UPLOAD_LIMIT_BYTES, validateImageFile, validateProductForm } from '../../utils/validation';
 
 export function ProductFormModal({ product, categories, onClose, onSave }) {
   const [form, setForm] = useState({
@@ -26,19 +26,36 @@ export function ProductFormModal({ product, categories, onClose, onSave }) {
   const handleImageUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    const imageError = validateImageFile(file);
+    if (imageError) {
+      setError(imageError);
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = () => update('image', reader.result);
+    reader.onload = () => {
+      setError('');
+      update('image', reader.result);
+    };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!form.image) {
-      setError('Please upload a food image before saving.');
+    const formError = validateProductForm(form, categories);
+    if (formError) {
+      setError(formError);
       return;
     }
     setError('');
-    onSave({ ...form, price: Number(form.price) });
+    onSave({
+      ...form,
+      name: form.name.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      available: Boolean(form.available),
+    });
   };
 
   return (
@@ -73,7 +90,7 @@ export function ProductFormModal({ product, categories, onClose, onSave }) {
         </label>
         <label className="admin-form-field">
           <span>Price</span>
-          <input type="number" value={form.price} onChange={(event) => update('price', event.target.value)} required />
+          <input type="number" min="1" step="1" value={form.price} onChange={(event) => update('price', event.target.value)} required />
         </label>
         <label className="admin-upload-field">
           <span>Upload Food Image</span>
@@ -81,7 +98,7 @@ export function ProductFormModal({ product, categories, onClose, onSave }) {
           <div className="admin-upload-box">
             {form.image ? <img src={form.image} alt="Food preview" /> : <Image size={30} strokeWidth={1.5} />}
             <strong>{form.image ? 'Change selected image' : 'Click to upload food image'}</strong>
-            <small>PNG, JPG, or WEBP supported</small>
+            <small>PNG, JPG, or WEBP supported. Max {IMAGE_UPLOAD_LIMIT_BYTES / 1024 / 1024}MB.</small>
           </div>
         </label>
         <label className="admin-form-field">

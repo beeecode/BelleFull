@@ -2,13 +2,14 @@ import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { formatPrice } from '../../utils/formatPrice';
+import { calculateOrderSubtotal } from '../../utils/orderTotals';
 import { useCart } from '../../context/CartContext';
 import { getMockSettings } from '../../services/mockMenuStore';
 
 export function CartDrawer({ isOpen, onClose, onCheckout, onBrowseMenu }) {
   const { cartItems, updateCartQuantity, removeFromCart } = useCart();
   const deliveryFee = useMemo(() => Number(getMockSettings().deliveryFee) || 1000, []);
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const subtotal = calculateOrderSubtotal(cartItems);
   const total = subtotal + (cartItems.length > 0 ? deliveryFee : 0);
 
   return (

@@ -10,6 +10,7 @@ import MessagesTab from './components/MessagesTab';
 import SettingsTab from './components/SettingsTab';
 import { OrderDetailsModal } from '../../components/modals/OrderDetailsModal';
 import { SystemAlertModal } from '../../components/modals/SystemAlertModal';
+import { authService } from '../../services/authService';
 
 export default function AdminPage() {
   const {
@@ -43,11 +44,9 @@ export default function AdminPage() {
   const selectedOrder = orders.find((order) => order.id === selectedOrderId);
 
   useEffect(() => {
-    if (!isLoggedIn && window.location.pathname === '/admin') {
-      window.history.replaceState({}, '', '/admin/login');
-    }
-    if (isLoggedIn && window.location.pathname === '/admin/login') {
-      window.history.replaceState({}, '', '/admin');
+    const redirectPath = authService.getAdminRedirectPath(window.location.pathname);
+    if (redirectPath) {
+      window.history.replaceState({}, '', redirectPath);
     }
   }, [isLoggedIn]);
 

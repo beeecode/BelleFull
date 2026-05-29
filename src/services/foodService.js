@@ -1,4 +1,5 @@
-import { getMockCategories, getMockProducts } from './mockMenuStore';
+import { categoryService } from './categoryService';
+import { productService } from './productService';
 
 /**
  * Service to manage food menu items and categories.
@@ -11,8 +12,8 @@ export const foodService = {
    */
   async getFoodMenuItems() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(getMockProducts({ publicOnly: true }));
+      setTimeout(async () => {
+        resolve(await productService.list({ publicOnly: true }));
       }, 300);
     });
   },
@@ -23,8 +24,9 @@ export const foodService = {
    */
   async getFoodCategories() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(getMockCategories({ publicOnly: true }).map((category) => category.name));
+      setTimeout(async () => {
+        const categories = await categoryService.list({ publicOnly: true });
+        resolve(categories.map((category) => category.name));
       }, 200);
     });
   },

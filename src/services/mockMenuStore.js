@@ -129,7 +129,19 @@ export function saveMockCategory(category, oldCategoryId = null) {
 }
 
 export function deleteMockCategory(categoryId) {
-  const nextCategories = getStoredCategories().filter((category) => category.id !== categoryId);
+  const category = getStoredCategories().find((item) => item.id === categoryId);
+
+  if (!category) return true;
+  if (category.name === 'All') {
+    throw new Error('The All category is required and cannot be deleted.');
+  }
+
+  const hasProducts = getStoredProducts().some((product) => product.category === category.name);
+  if (hasProducts) {
+    throw new Error(`Move or delete products in ${category.name} before deleting this category.`);
+  }
+
+  const nextCategories = getStoredCategories().filter((item) => item.id !== categoryId);
   writeJson(CATEGORIES_KEY, nextCategories);
   return true;
 }

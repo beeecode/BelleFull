@@ -2,29 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { formatPrice } from '../../../utils/formatPrice';
+import { formatOrderDate, getOrderDateKey, getOrderTimeKey } from '../../../utils/orderDates';
+import { calculateOrderTotal } from '../../../utils/orderTotals';
+import { HISTORY_ORDER_STATUSES, PAYMENT_STATUSES } from '../../../constants/orderContracts';
 import { OrderStatus } from './OrderStatus';
 
 const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } },
 };
-
-function getOrderTotal(order) {
-  return order.items.reduce((total, item) => total + item.price * item.quantity, 0);
-}
-
-function getDeliveryFee(order) {
-  return order.deliveryMethod === 'Delivery' ? 1000 : 0;
-}
-
-function normalizeDate(dateText) {
-  const date = new Date(String(dateText).replace(',', ''));
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-}
-
-function normalizeTime(dateText) {
-  const date = new Date(String(dateText).replace(',', ''));
-  return Number.isNaN(date.getTime()) ? '' : date.toTimeString().slice(0, 5);
-}
 
 function AdminSearch({ value, onChange, placeholder = 'Search' }) {
   return (
@@ -54,9 +39,9 @@ export default function HistoryTab({ orders, onOpenOrder }) {
   });
 
   const historyOrders = orders.filter((order) => {
-    if (!['completed', 'cancelled', 'failed_payment'].includes(order.order_status)) return false;
-    const orderDate = normalizeDate(order.date);
-    const orderTime = normalizeTime(order.date);
+    if (!HISTORY_ORDER_STATUSES.includes(order.order_status)) return false;
+    const orderDate = getOrderDateKey(order);
+    const orderTime = getOrderTimeKey(order);
     const query = filters.query.toLowerCase();
     return (
       [
@@ -123,9 +108,9 @@ export default function HistoryTab({ orders, onOpenOrder }) {
         </select>
         <select value={filters.payment} onChange={(event) => updateFilter('payment', event.target.value)}>
           <option value="all">All payment status</option>
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="failed">Failed</option>
+          <option value={PAYMENT_STATUSES.PENDING}>Pending</option>
+          <option value={PAYMENT_STATUSES.PAID}>Paid</option>
+          <option value={PAYMENT_STATUSES.FAILED}>Failed</option>
         </select>
         <select value={filters.delivery} onChange={(event) => updateFilter('delivery', event.target.value)}>
           <option value="all">All delivery</option>
@@ -138,9 +123,9 @@ export default function HistoryTab({ orders, onOpenOrder }) {
           <button className="admin-table-row" type="button" onClick={() => onOpenOrder(order)} key={order.id}>
             <span>{order.id}</span>
             <span>{order.customer.name}</span>
-            <span>{order.date}</span>
+            <span>{formatOrderDate(order)}</span>
             <span>{order.items.map((item) => item.name).join(', ')}</span>
-            <strong>{formatPrice(getOrderTotal(order) + getDeliveryFee(order))}</strong>
+            <strong>{formatPrice(calculateOrderTotal(order))}</strong>
             <span>{order.paymentStatus}</span>
             <OrderStatus status={order.order_status} />
           </button>

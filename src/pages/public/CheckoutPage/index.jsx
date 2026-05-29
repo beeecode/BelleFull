@@ -10,6 +10,8 @@ import { useCart } from '../../../context/CartContext';
 import { orderService } from '../../../services/orderService';
 import { getMockSettings } from '../../../services/mockMenuStore';
 import { formatPrice } from '../../../utils/formatPrice';
+import { calculateOrderSubtotal } from '../../../utils/orderTotals';
+import { validateCheckoutFields } from '../../../utils/validation';
 import { sectionTransition } from '../../../constants/motion';
 import { siteConfig } from '../../../constants/siteConfig';
 
@@ -76,7 +78,7 @@ export default function CheckoutPage({ onNavigateHome, onNavigateMenu }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = useMemo(
-    () => cartItems.reduce((total, item) => total + item.price * item.quantity, 0),
+    () => calculateOrderSubtotal(cartItems),
     [cartItems],
   );
   const activeDeliveryFee = deliveryMethod === 'Delivery' && cartItems.length > 0 ? checkoutSettings.deliveryFee : 0;
@@ -102,25 +104,14 @@ export default function CheckoutPage({ onNavigateHome, onNavigateMenu }) {
   };
 
   const validateCheckout = () => {
-    const nextErrors = {};
-
-    if (!fields.fullName.trim()) nextErrors.fullName = 'Please enter your full name.';
-    if (!fields.phoneNumber.trim()) nextErrors.phoneNumber = 'Please enter your phone number.';
-    if (!fields.emailAddress.trim()) nextErrors.emailAddress = 'Please enter your email address for payment.';
-    if (!fields.branch.trim()) nextErrors.branch = 'Please select a branch.';
-    if (!deliveryMethod) nextErrors.deliveryMethod = 'Please select a delivery method.';
-    if (!paymentMethod) nextErrors.paymentMethod = 'Please select a payment method.';
-    if (deliveryMethod === 'Delivery' && !fields.deliveryAddress.trim()) {
-      nextErrors.deliveryAddress = 'Please enter your delivery address.';
-    }
-    if (orderType === 'Schedule Order') {
-      if (!mealPeriod) nextErrors.mealPeriod = 'Please select meal period, date, and time for your scheduled order.';
-      if (!fields.orderDate) nextErrors.orderDate = 'Please select order date.';
-      if (!fields.orderTime) nextErrors.orderTime = 'Please select order time.';
-    }
-    if (cartItems.length === 0) {
-      nextErrors.form = 'Your cart is empty. Please go back to the menu and add food items.';
-    }
+    const nextErrors = validateCheckoutFields({
+      fields,
+      deliveryMethod,
+      paymentMethod,
+      orderType,
+      mealPeriod,
+      cartItems,
+    });
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -138,12 +129,12 @@ export default function CheckoutPage({ onNavigateHome, onNavigateMenu }) {
         delivery_address: deliveryMethod === 'Delivery' ? fields.deliveryAddress.trim() : null,
       };
       const receipt = await orderService.placeOrder({
-        fullName: fields.fullName,
-        phoneNumber: fields.phoneNumber,
-        emailAddress: fields.emailAddress,
-        branch: fields.branch,
+        fullName: fields.fullName.trim(),
+        phoneNumber: fields.phoneNumber.trim(),
+        emailAddress: fields.emailAddress.trim(),
+        branch: fields.branch.trim(),
         ...deliveryPayload,
-        orderNote: fields.orderNote,
+        orderNote: fields.orderNote.trim(),
         orderType,
         mealPeriod,
         orderDate: fields.orderDate,

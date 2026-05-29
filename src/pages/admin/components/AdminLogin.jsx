@@ -27,7 +27,7 @@ export default function AdminLogin({ onLogin, showNotice }) {
         <Logo className="admin-login-logo" />
         <div>
           <h1>Admin Login</h1>
-          <p>Login to manage restaurant orders and menu</p>
+          <p>Mock development login for managing restaurant orders and menu</p>
         </div>
         <label className="admin-form-field">
           <span>Email or Username</span>

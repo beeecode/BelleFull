@@ -1,42 +1,21 @@
-import { initialMessages } from '../data/messages';
-import {
-  deleteMockCategory,
-  deleteMockProduct,
-  getMockCategories,
-  getMockProducts,
-  getMockSettings,
-  saveMockCategory,
-  saveMockProduct,
-  saveMockSettings,
-  toggleMockCategoryVisibility,
-} from './mockMenuStore';
-import { getMockOrders, updateMockOrderStatus } from './mockOrderStore';
+import { categoryService } from './categoryService';
+import { notificationService } from './notificationService';
+import { orderService } from './orderService';
+import { productService } from './productService';
+import { settingsService } from './settingsService';
 
-// Initialize memory stores with localStorage support to simulate persistence
-const initMessages = () => {
-  const stored = window.localStorage.getItem('atd_admin_messages');
-  if (stored) return JSON.parse(stored);
-
-  window.localStorage.setItem('atd_admin_messages', JSON.stringify(initialMessages));
-  return initialMessages;
-};
-
-let ordersStore = getMockOrders();
-let productsStore = getMockProducts();
-let categoriesStore = getMockCategories();
-let messagesStore = initMessages();
-let settingsStore = getMockSettings();
-
-const persist = (key, data) => {
-  window.localStorage.setItem(key, JSON.stringify(data));
-};
+let ordersStore = [];
+let productsStore = [];
+let categoriesStore = [];
+let messagesStore = [];
+let settingsStore = {};
 
 export const adminService = {
   // Orders CRUD
   async getOrders() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        ordersStore = getMockOrders();
+      setTimeout(async () => {
+        ordersStore = await orderService.listAdminOrders();
         resolve([...ordersStore]);
       }, 300);
     });
@@ -44,9 +23,9 @@ export const adminService = {
 
   async updateOrderStatus(orderId, status) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        const updated = updateMockOrderStatus(orderId, status);
-        ordersStore = getMockOrders();
+      setTimeout(async () => {
+        const updated = await orderService.updateStatus(orderId, status);
+        ordersStore = await orderService.listAdminOrders();
         resolve(updated);
       }, 250);
     });
@@ -55,8 +34,8 @@ export const adminService = {
   // Products CRUD
   async getProducts() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        productsStore = getMockProducts();
+      setTimeout(async () => {
+        productsStore = await productService.list();
         resolve([...productsStore]);
       }, 300);
     });
@@ -64,9 +43,9 @@ export const adminService = {
 
   async saveProduct(product) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        const saved = saveMockProduct(product);
-        productsStore = getMockProducts();
+      setTimeout(async () => {
+        const saved = await productService.save(product);
+        productsStore = await productService.list();
         resolve(saved);
       }, 300);
     });
@@ -74,9 +53,9 @@ export const adminService = {
 
   async deleteProduct(productId) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        deleteMockProduct(productId);
-        productsStore = getMockProducts();
+      setTimeout(async () => {
+        await productService.delete(productId);
+        productsStore = await productService.list();
         resolve(true);
       }, 250);
     });
@@ -85,8 +64,8 @@ export const adminService = {
   // Categories CRUD
   async getCategories() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        categoriesStore = getMockCategories();
+      setTimeout(async () => {
+        categoriesStore = await categoryService.list();
         resolve([...categoriesStore]);
       }, 200);
     });
@@ -94,27 +73,31 @@ export const adminService = {
 
   async saveCategory(category, oldCategoryId = null) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        categoriesStore = saveMockCategory(category, oldCategoryId);
+      setTimeout(async () => {
+        categoriesStore = await categoryService.save(category, oldCategoryId);
         resolve(categoriesStore);
       }, 200);
     });
   },
 
   async deleteCategory(categoryId) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        deleteMockCategory(categoryId);
-        categoriesStore = getMockCategories();
-        resolve(true);
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          await categoryService.delete(categoryId);
+          categoriesStore = await categoryService.list();
+          resolve(true);
+        } catch (err) {
+          reject(err);
+        }
       }, 200);
     });
   },
 
   async toggleCategoryVisibility(categoryId) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        categoriesStore = toggleMockCategoryVisibility(categoryId);
+      setTimeout(async () => {
+        categoriesStore = await categoryService.toggleVisibility(categoryId);
         resolve(categoriesStore);
       }, 200);
     });
@@ -123,15 +106,18 @@ export const adminService = {
   // Messages CRUD
   async getMessages() {
     return new Promise((resolve) => {
-      setTimeout(() => resolve([...messagesStore]), 250);
+      setTimeout(async () => {
+        messagesStore = await notificationService.list();
+        resolve([...messagesStore]);
+      }, 250);
     });
   },
 
   async deleteMessage(messageId) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        messagesStore = messagesStore.filter((msg) => msg.id !== messageId);
-        persist('atd_admin_messages', messagesStore);
+      setTimeout(async () => {
+        await notificationService.delete(messageId);
+        messagesStore = await notificationService.list();
         resolve(true);
       }, 200);
     });
@@ -139,11 +125,9 @@ export const adminService = {
 
   async markMessageAsRead(messageId) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        messagesStore = messagesStore.map((msg) =>
-          msg.id === messageId ? { ...msg, read: true } : msg
-        );
-        persist('atd_admin_messages', messagesStore);
+      setTimeout(async () => {
+        await notificationService.markAsRead(messageId);
+        messagesStore = await notificationService.list();
         resolve(true);
       }, 200);
     });
@@ -152,8 +136,8 @@ export const adminService = {
   // Settings CRUD
   async getSettings() {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        settingsStore = getMockSettings();
+      setTimeout(async () => {
+        settingsStore = await settingsService.get();
         resolve({ ...settingsStore });
       }, 200);
     });
@@ -161,8 +145,8 @@ export const adminService = {
 
   async updateSettings(settings) {
     return new Promise((resolve) => {
-      setTimeout(() => {
-        settingsStore = saveMockSettings(settings);
+      setTimeout(async () => {
+        settingsStore = await settingsService.update(settings);
         resolve(settingsStore);
       }, 300);
     });

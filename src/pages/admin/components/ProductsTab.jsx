@@ -93,6 +93,14 @@ export default function ProductsTab({
       showNotice('Required Category', 'The All category is required and cannot be deleted.');
       return;
     }
+    const productCount = products.filter((product) => product.category === category.name).length;
+    if (productCount > 0) {
+      showNotice(
+        'Category In Use',
+        `This category has ${productCount} product${productCount === 1 ? '' : 's'}. Move or delete those products before deleting the category.`,
+      );
+      return;
+    }
     requestConfirm({
       title: 'Delete Category?',
       message: `Are you sure you want to delete ${category.name}? This action cannot be undone.`,

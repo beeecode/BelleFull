@@ -6,6 +6,8 @@ import { Footer } from '../../../components/layout/Footer';
 import { BackToTop } from '../../../components/ui/BackToTop';
 import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBackgroundIllustrations';
 import { formatPrice } from '../../../utils/formatPrice';
+import { calculateOrderSubtotal, calculateOrderTotal, getOrderDeliveryFee } from '../../../utils/orderTotals';
+import { DEFAULT_ORDER_MESSAGE, getWhatsAppUrl } from '../../../utils/contactLinks';
 import { sectionTransition } from '../../../constants/motion';
 
 export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
@@ -24,9 +26,10 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
 
   const getWhatsAppLink = (ord) => {
     if (!ord) return '#';
-    const baseText = `Hello Amazing Taste Delicacies! I just placed an order (Number: ${ord.orderNumber}).\n\n` +
+    const customerName = ord.customerName || ord.customer?.name || 'Customer';
+    const baseText = `Hello Amazing Taste Delicacies! I just placed an order (Number: ${ord.orderNumber || ord.id}).\n\n` +
       `*Details:*\n` +
-      `- Customer Name: ${ord.customerName}\n` +
+      `- Customer Name: ${customerName}\n` +
       `- Order Type: ${ord.orderType}\n` +
       `- Delivery Method: ${ord.deliveryMethod}\n` +
       (ord.orderType === 'Schedule Order' ? `- Scheduled: ${ord.mealPeriod}, ${ord.orderDate} at ${ord.orderTime}\n` : '') +
@@ -85,7 +88,7 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
                     margin: 0,
                     fontSize: '17px'
                   }}>
-                    Order Number: {order.orderNumber}
+                    Order Number: {order.orderNumber || order.id}
                   </p>
                 </div>
 
@@ -98,7 +101,7 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
                   <div style={{ display: 'grid', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--figma-soft)', paddingBottom: '6px' }}>
                       <span style={{ color: 'var(--figma-muted)' }}>Customer Name</span>
-                      <strong>{order.customerName}</strong>
+                      <strong>{order.customerName || order.customer?.name}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--figma-soft)', paddingBottom: '6px' }}>
                       <span style={{ color: 'var(--figma-muted)' }}>Delivery Method</span>
@@ -172,11 +175,11 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
                   <div style={{ display: 'grid', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--figma-muted)', fontSize: '15px' }}>
                       <span>Subtotal</span>
-                      <span>{formatPrice(order.subtotal || (order.total - (order.deliveryMethod === 'Delivery' ? 1000 : 0)))}</span>
+                      <span>{formatPrice(calculateOrderSubtotal(order))}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--figma-muted)', fontSize: '15px' }}>
                       <span>Delivery Fee</span>
-                      <span>{formatPrice(order.deliveryFee || (order.deliveryMethod === 'Delivery' ? 1000 : 0))}</span>
+                      <span>{formatPrice(getOrderDeliveryFee(order))}</span>
                     </div>
                     <div style={{
                       display: 'flex',
@@ -189,7 +192,7 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
                       color: 'var(--figma-black)'
                     }}>
                       <span>Total Paid</span>
-                      <span style={{ color: 'var(--figma-red)' }}>{formatPrice(order.total)}</span>
+                      <span style={{ color: 'var(--figma-red)' }}>{formatPrice(calculateOrderTotal(order))}</span>
                     </div>
                   </div>
                 </div>
@@ -247,11 +250,24 @@ export default function OrderSuccessPage({ onNavigateHome, onNavigateMenu }) {
               </>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', marginBottom: '12px' }}>No recent order found</h2>
-                <p style={{ color: 'var(--figma-muted)', marginBottom: '24px' }}>Please go back to the menu to place an order.</p>
-                <button type="button" onClick={onNavigateMenu} className="place-order-button" style={{ padding: '0 24px' }}>
-                  Go to Menu
-                </button>
+                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', marginBottom: '12px' }}>Order details could not be found</h2>
+                <p style={{ color: 'var(--figma-muted)', marginBottom: '24px' }}>
+                  Order details could not be found. Please contact support if payment was completed.
+                </p>
+                <div className="success-actions" style={{ justifyContent: 'center' }}>
+                  <button type="button" onClick={onNavigateMenu} className="place-order-button" style={{ padding: '0 24px' }}>
+                    Go to Menu
+                  </button>
+                  <a
+                    href={getWhatsAppUrl(DEFAULT_ORDER_MESSAGE)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="place-order-button"
+                    style={{ padding: '0 24px', background: '#25D366', color: '#fff', textDecoration: 'none' }}
+                  >
+                    Contact Support
+                  </a>
+                </div>
               </div>
             )}
           </motion.div>

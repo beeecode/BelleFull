@@ -5,6 +5,7 @@ import { Footer } from '../../../components/layout/Footer';
 import { BackToTop } from '../../../components/ui/BackToTop';
 import { FigmaBackgroundIllustrations } from '../../../components/common/FigmaBackgroundIllustrations';
 import { formatPrice } from '../../../utils/formatPrice';
+import { calculateOrderTotal } from '../../../utils/orderTotals';
 import { DEFAULT_ORDER_MESSAGE, getWhatsAppUrl } from '../../../utils/contactLinks';
 
 export default function PaymentFailedPage({ onNavigateHome, onNavigateMenu, onNavigateCheckout }) {
@@ -46,10 +47,15 @@ export default function PaymentFailedPage({ onNavigateHome, onNavigateMenu, onNa
             {order ? (
               <div>
                 <strong>Order: {order.id}</strong>
-                <strong>Total: {formatPrice(order.total || 0)}</strong>
+                <strong>Total: {formatPrice(calculateOrderTotal(order))}</strong>
                 <strong>Status: {order.order_status || 'pending_payment'}</strong>
               </div>
-            ) : null}
+            ) : (
+              <div>
+                <strong>Order details could not be found.</strong>
+                <strong>Please contact support if payment was completed.</strong>
+              </div>
+            )}
 
             <div className="success-actions">
               <button type="button" className="place-order-button" onClick={onNavigateCheckout}>
